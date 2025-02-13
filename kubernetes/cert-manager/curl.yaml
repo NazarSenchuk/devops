@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: curl-pod
+spec:
+  containers:
+  - name: curl-container
+    image: curlimages/curl:latest  # Офіційний образ curl
+    command: ["curl"]
+    args: ["-v", "nginx-service:80"]  # Замініть на ваш URL
+  restartPolicy: Never  # Под завершить роботу після виконання команди

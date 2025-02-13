@@ -1,0 +1,38 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ebs-sc  # Name of the StorageClass
+provisioner: ebs.csi.aws.com  # The provisioner for AWS EBS CSI Driver
+parameters:
+  type: gp2  # EBS volume type (gp2, io1, st1, sc1, or gp3)
+reclaimPolicy: Retain  # When a PersistentVolumeClaim is deleted, the volume is retained
+
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ebs-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: ebs-sc
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ebs-test-pod
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    volumeMounts:
+    - mountPath: /usr/share/nginx/html  # Mount EBS to this path in the container
+      name: ebs-storage
+  volumes:
+  - name: ebs-storage
+    persistentVolumeClaim:
+      claimName: ebs-pvc
