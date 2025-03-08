@@ -1,0 +1,44 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: {{ .Values.deployment.name }}
+  labels:
+    {{- include "education.labels" . | nindent 4 }}
+
+spec:
+  replicas: {{ .Values.deployment.replicas }}
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      k8s-app: nginx
+  template:
+    metadata:
+      labels:
+        k8s-app: nginx
+    spec:
+      containers:
+        - name: {{ .Values.container.name }}
+          image: {{ .Values.container.image }}
+          ports:
+            - containerPort: {{ .Values.container.port }}
+              name: http
+          {{- with .Values.probes }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: html
+              mountPath: /usr/local/openresty/nginx/html/
+            - name: config
+              mountPath: /etc/nginx/conf.d/
+      volumes:
+        - name: html
+          configMap:
+            name: {{ .Values.deployment.name }}-html
+        - name: config
+          configMap:
+            name: {{ .Values.deployment.name }}-conf
