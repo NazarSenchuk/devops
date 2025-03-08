@@ -1,0 +1,11 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: my-backup
+  namespace: default
+spec:
+  cluster:
+    name: cluster-example
+  storage:
+    local:
+      path: /backups

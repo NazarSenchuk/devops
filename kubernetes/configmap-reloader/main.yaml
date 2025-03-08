@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-server
+  annotations:
+    configmap.reloader.stakater.com/reload: "my-html-config"
+    reloader.stakater.com/auto: "true"
+spec:
+  containers:
+    - name: web-server
+      image: nginx:latest
+      ports:
+        - containerPort: 80 
+      volumeMounts:
+        - name: html-config
+          mountPath: /usr/share/nginx/html
+          
+     
+  volumes:
+    - name: html-config
+      configMap:
+        name: my-html-config
