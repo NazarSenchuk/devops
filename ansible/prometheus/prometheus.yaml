@@ -1,0 +1,86 @@
+---
+- name: Install and configure Prometheus
+  hosts: all
+  become: yes
+  vars:
+    prometheus_version: "2.47.1"  # Версія Prometheus
+    prometheus_install_dir: "/opt/prometheus"
+    prometheus_user: "prometheus"
+    prometheus_group: "prometheus"
+
+  tasks:
+    - name: Ensure Prometheus group exists
+      group:
+        name: "{{ prometheus_group }}"
+        state: present
+
+    - name: Ensure Prometheus user exists
+      user:
+        name: "{{ prometheus_user }}"
+        group: "{{ prometheus_group }}"
+        system: yes
+        create_home: no
+        shell: /usr/sbin/nologin
+
+    - name: Create Prometheus installation directory
+      file:
+        path: "{{ prometheus_install_dir }}"
+        state: directory
+        owner: "{{ prometheus_user }}"
+        group: "{{ prometheus_group }}"
+        mode: '0755'
+
+    - name: Download Prometheus
+      get_url:
+        url: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+        dest: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+
+    - name: Extract Prometheus
+      unarchive:
+        src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+        dest: "{{ prometheus_install_dir }}"
+        remote_src: yes
+        extra_opts: ["--strip-components=1"]
+        owner: "{{ prometheus_user }}"
+        group: "{{ prometheus_group }}"
+
+    - name: Create Prometheus configuration directory
+      file:
+        path: "{{ prometheus_install_dir }}/conf"
+        state: directory
+        owner: "{{ prometheus_user }}"
+        group: "{{ prometheus_group }}"
+        mode: '0755'
+
+    - name: Generate Prometheus configuration with dynamic targets
+      copy:
+        content: |
+          global:
+            scrape_interval: 15s
+
+          scrape_configs:
+            - job_name: 'prometheus'
+              static_configs:
+                - targets: {{ groups['all'] | map('regex_replace', '$', ':9090') | list }}
+        dest: "{{ prometheus_install_dir }}/conf/prometheus.yml"
+        owner: "{{ prometheus_user }}"
+        group: "{{ prometheus_group }}"
+        mode: '0644'
+
+    - name: Create Prometheus systemd service file
+      template:
+        src: prometheus.service
+        dest: /etc/systemd/system/prometheus.service
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    - name: Enable and start Prometheus service
+      systemd:
+        name: prometheus
+        state: started
+        enabled: yes

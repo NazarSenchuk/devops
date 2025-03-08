@@ -1,0 +1,44 @@
+---
+- name: Install and configure Logstash on Ubuntu
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install required dependencies
+      apt:
+        name:
+          - openjdk-11-jdk
+          - wget
+        state: present
+
+    - name: Download Logstash
+      get_url:
+        url: https://artifacts.elastic.co/downloads/logstash/logstash-8.10.0.deb
+        dest: /tmp/logstash-8.10.0.deb
+
+    - name: Install Logstash from the downloaded .deb file
+      apt:
+        deb: /tmp/logstash-8.10.0.deb
+
+    - name: Ensure Logstash service is enabled and started
+      service:
+        name: logstash
+        enabled: yes
+        state: started
+
+    - name: Clean up downloaded .deb file
+      file:
+        path: /tmp/logstash-8.10.0.deb
+        state: absent
+
+    - name: Verify Logstash installation
+      shell: /usr/share/logstash/bin/logstash --version
+      register: logstash_version
+      changed_when: false
+
+    - name: Display Logstash version
+      debug:
+        msg: "Logstash version: {{ logstash_version.stdout }}"
