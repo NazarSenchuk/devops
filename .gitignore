@@ -1,0 +1,48 @@
+kubernetes/vault/cluster-keys.json
+# Terraform files
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+.terraform.lock.hcl
+
+# Terraform cache and plugin directories
+.terraform.d/
+.terraform.providers/
+.terraform/plugins/
+
+# Terraform plan output
+*.tfplan
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local environment files
+.env
+*.env
+
+# Log files
+*.log
+
+# Dependency directories
+vendor/
+node_modules/
+
+# Build artifacts
+dist/
+build/
+out/
+
+# Temporary files
+tmp/
+temp/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Custom cache directories
+.cache/
