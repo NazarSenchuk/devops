@@ -1,0 +1,72 @@
+---
+- name: Install and Configure Logstash on Ubuntu
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Java (required for Logstash)
+      apt:
+        name: openjdk-11-jdk
+        state: present
+
+    - name: Download Logstash
+      get_url:
+        url: https://artifacts.elastic.co/downloads/logstash/logstash-8.10.0-amd64.deb
+        dest: /tmp/logstash-8.10.0-amd64.deb
+
+    - name: Install Logstash
+      apt:
+        deb: /tmp/logstash-8.10.0-amd64.deb
+
+    - name: Create Logstash configuration directory
+      file:
+        path: /etc/logstash/conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Configure Logstash input, filter, and output
+      copy:
+        dest: /etc/logstash/conf.d/logstash.conf
+        content: |
+          input {
+            beats {
+              port => 5044
+            }
+          }
+
+          filter {
+            grok {
+              match => { "message" => "%{COMBINEDAPACHELOG}" }
+            }
+          }
+
+          output {
+            elasticsearch {
+              hosts => ["localhost:9200"]
+              index => "logs-%{+YYYY.MM.dd}"
+            }
+            stdout { codec => rubydebug }
+          }
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Start and enable Logstash service
+      service:
+        name: logstash
+        state: started
+        enabled: yes
+
+    - name: Ensure Logstash is running
+      shell: systemctl status logstash
+      register: logstash_status
+      changed_when: false
+
+    - name: Display Logstash status
+      debug:
+        var: logstash_status.stdout_lines

@@ -1,0 +1,49 @@
+---
+- name: Install and configure Kibana on Ubuntu
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install dependencies
+      apt:
+        name:
+          - curl
+          - gnupg
+        state: present
+
+    - name: Add Elastic GPG key
+      apt_key:
+        url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+        state: present
+
+    - name: Add Elastic repository
+      apt_repository:
+        repo: "deb https://artifacts.elastic.co/packages/8.x/apt stable main"
+        state: present
+        filename: elastic-8.x.list
+
+    - name: Install Kibana
+      apt:
+        name: kibana
+        state: present
+        update_cache: yes
+
+    - name: Configure Kibana to listen on all interfaces
+      lineinfile:
+        path: /etc/kibana/kibana.yml
+        regexp: '^#?server.host:'
+        line: 'server.host: "0.0.0.0"'
+        state: present
+
+    - name: Enable Kibana service
+      service:
+        name: kibana
+        enabled: yes
+
+    - name: Start Kibana service
+      service:
+        name: kibana
+        state: started

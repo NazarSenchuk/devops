@@ -1,0 +1,4 @@
+---
+# vars file for kibana_role
+gpg_url : "https://artifacts.elastic.co/GPG-KEY-elasticsearch"
+elastic_repository : "https://artifacts.elastic.co/packages/8.x/apt"

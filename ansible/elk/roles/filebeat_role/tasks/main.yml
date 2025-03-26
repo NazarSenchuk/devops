@@ -1,0 +1,61 @@
+- name: Update apt cache and upgrade all packages
+  apt:
+    update_cache: yes
+    upgrade: dist
+    cache_valid_time: 3600
+  tags: install
+
+- name: Add required dependencies.
+  apt:
+    name:
+      - apt-transport-https
+      - gnupg2
+    state: present
+
+- name: Add Elasticsearch apt key.
+  apt_key:
+    url: "{{ gpg_url }}"
+    state: present
+
+- name: Add Elasticsearch repository.
+  apt_repository:
+    repo: 'deb {{ elastic_repository }} stable main'
+    state: present
+    update_cache: true
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+  tags: install
+
+
+- name: Install Filebeat
+  apt:
+    name: filebeat
+    state: present
+    update_cache: yes
+  tags: install
+
+
+
+- name: Copy custom Filebeat configuration files
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/filebeat/"
+    owner: root
+    mode: "0640"
+  with_fileglob: "{{ custom_configs }}"
+  when: 
+    - custom_configs is defined
+    - custom_configs | length > 0
+  
+
+- name: Enable Filebeat
+  systemd:
+    name: filebeat
+    enabled: yes 
+
+- name: Start Kibana
+  systemd: 
+    name: kibana
+    state: started

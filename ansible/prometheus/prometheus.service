@@ -1,0 +1,17 @@
+[Unit]
+Description=Prometheus
+Documentation=https://prometheus.io/docs/introduction/overview/
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+ExecStart=/opt/prometheus/prometheus \
+  --config.file=/opt/prometheus/conf/prometheus.yml \
+  --storage.tsdb.path=/opt/prometheus/data \
+  --web.console.templates=/opt/prometheus/consoles \
+  --web.console.libraries=/opt/prometheus/console_libraries
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

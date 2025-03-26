@@ -1,0 +1,11 @@
+---
+# defaults file for elasticsearch_role
+elasticsearch_version: "8.x"
+elasticsearch_cluster_name: "my_cluster"
+elasticsearch_node_name: "my_node"
+
+elasticsearch_network_host: "0.0.0.0"
+elasticsearch_http_port: 9200
+
+
+default_discovery.type: single-node

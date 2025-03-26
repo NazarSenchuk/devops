@@ -1,0 +1,62 @@
+---
+- name: Install and configure Elasticsearch on Ubuntu
+  hosts: all
+  become: yes
+  vars:
+    elasticsearch_version: "8.10.0"  # Specify the version of Elasticsearch to install
+    elasticsearch_heap_size: "1g"    # Set the heap size for Elasticsearch
+    elasticsearch_network_host: "0.0.0.0"  # Bind Elasticsearch to all network interfaces
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+      
+
+    - name: Install required dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - openjdk-17-jdk  # Elasticsearch 8.x requires Java 17
+        state: present
+
+    - name: Add Elasticsearch GPG key
+      apt_key:
+        url: "https://artifacts.elastic.co/GPG-KEY-elasticsearch"
+        state: present
+
+    - name: Add Elasticsearch repository
+      apt_repository:
+        repo: "deb https://artifacts.elastic.co/packages/8.x/apt stable main"
+        state: present
+        filename: "elasticsearch"
+
+    - name: Install Elasticsearch
+      apt:
+        name: "elasticsearch={{ elasticsearch_version }}"
+        state: present
+        update_cache: yes
+
+    
+
+    - name: Configure Elasticsearch network settings
+      lineinfile:
+        path: /etc/elasticsearch/elasticsearch.yml
+        regexp: "^#?network.host:"
+        line: "network.host: {{elasticsearch_network_host}}"
+      notify: Restart Elasticsearch
+
+    - name: Enable and start Elasticsearch service
+      service:
+        name: elasticsearch
+        enabled: yes
+        state: started
+
+  handlers:
+    - name: Restart Elasticsearch
+      service:
+        name: elasticsearch
+        state: restarted

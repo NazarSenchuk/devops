@@ -1,0 +1,71 @@
+---
+- name: Install and Configure Filebeat on Ubuntu
+  hosts: filebeat
+  become: yes
+  tasks:
+
+    # Step 1: Update apt cache
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    # Step 2: Install dependencies
+    - name: Install required packages
+      apt:
+        name:
+          - curl
+          - apt-transport-https
+        state: present
+
+    - name: Download Filebeat .deb package
+      get_url:
+        url: "https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-8.15.2-amd64.deb"
+        dest: /tmp/filebeat-8.15.2-amd64.deb
+
+    # Step 2: Install the .deb package using dpkg
+    - name: Install Filebeat from .deb package
+      apt:
+        deb: /tmp/filebeat-8.15.2-amd64.deb
+
+    # Step 6: Configure Filebeat
+    - name: Configure Filebeat
+      copy:
+        content: |
+          filebeat.inputs:
+          - type: log
+            enabled: true
+            paths:
+              - /var/log/*.log
+
+          output.elasticsearch:
+            hosts: ["http://:9200"]
+            username: "elastic"
+            password: "your_password_here"
+
+          setup.kibana:
+            host: "http://:5601"
+        dest: /etc/filebeat/filebeat.yml
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart Filebeat
+
+    # Step 7: Enable and start Filebeat service
+    - name: Enable and start Filebeat service
+      service:
+        name: filebeat
+        enabled: yes
+        state: started
+
+    # Step 8: Set up Filebeat modules (optional)
+    - name: Set up Filebeat modules
+      command: filebeat setup
+      args:
+        chdir: /usr/share/filebeat/bin
+
+    handlers:
+      - name: Restart Filebeat
+        service:
+          name: filebeat
+          state: restarted
+

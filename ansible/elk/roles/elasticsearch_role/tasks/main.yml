@@ -1,0 +1,91 @@
+---
+# tasks file for elasticsearch_role
+- name: Update apt cache and upgrade all packages
+  apt:
+    update_cache: yes
+    upgrade: dist
+    cache_valid_time: 3600
+  tags: install
+
+- name: Add required dependencies.
+  apt:
+    name:
+      - apt-transport-https
+      - gnupg2
+    state: present
+
+- name: Add Elasticsearch apt key.
+  apt_key:
+    url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    state: present
+
+- name: Add Elasticsearch repository.
+  apt_repository:
+    repo: 'deb https://artifacts.elastic.co/packages/8.x/apt stable main'
+    state: present
+    update_cache: true
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+  tags: install
+
+
+- name: Install Elasticsearch
+  apt:
+    name: elasticsearch
+    state: present
+    update_cache: yes
+  tags: install
+
+- name: Enable Elasticsearch service
+  systemd:
+    name: elasticsearch
+    enabled: yes
+
+- name: Start Elasticsearch service
+  systemd:
+    name: elasticsearch
+    state: started
+
+
+
+- name: Copy custom Elasticsearch configuration files
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/elasticsearch/"
+    owner: root
+    group: elasticsearch
+    mode: "0640"
+  with_fileglob: "{{ elasticsearch_custom_configs }}"
+  when: 
+    - elasticsearch_custom_configs is defined
+    - elasticsearch_custom_configs | length > 0
+  notify: Restart Elasticsearch
+
+
+- name: Copy custom certificates
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/elasticsearch/certs/"
+    owner: root
+    mode: "0655"
+  with_fileglob: "{{ custom_certificates }}"
+  when: 
+    - custom_certificates is defined
+    - custom_certificates | length > 0
+  notify: Restart Kibana
+
+
+
+- name: Deploy default Elasticsearch configuration
+  template:
+    src: elasticsearch.yml.j2
+    dest: "{{ elasticsearch_config_path }}"
+    owner: root
+    group: elasticsearch
+    mode: "0640"  
+  when: 
+    - elasticsearch_custom_configs is not defined or elasticsearch_custom_configs | length == 0
+  notify: Restart Elasticsearch
+  tags: configuration

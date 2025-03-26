@@ -1,0 +1,18 @@
+
+network.host: {{ elasticsearch_network_host }}
+http.port: {{ elasticsearch_http_port }}
+
+# Additional custom configurations
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+
+{% if discovery_type != "single-node" %}
+cluster.name: {{ elasticsearch_cluster_name }}
+node.name: {{ elasticsearch_node_name }}
+discovery.seed_hosts: ["127.0.0.1"]
+cluster.initial_master_nodes: ["{{ elasticsearch_node_name }}"]
+{% else %}
+
+discovery.type: single-node
+
+{% endif %}
