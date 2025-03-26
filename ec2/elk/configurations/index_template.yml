@@ -1,0 +1,301 @@
+
+default_pipeline
+"index":{
+  "default_pipeline":"пайплайн яких хочете використовувати"
+
+}
+
+1. Налаштування кількості шардів і реплік:
+
+    number_of_shards: Кількість шардів (сегментів) для індексу.
+
+    number_of_replicas: Кількість реплік для кожного шарду.
+
+json
+Copy
+
+{
+  "index": {
+    "number_of_shards": 3,
+    "number_of_replicas": 2
+  }
+}
+
+2. Налаштування аналізаторів та токенізаторів:
+
+    Ви можете визначити власні аналізатори, токенізатори, фільтри тощо для обробки тексту.
+
+json
+Copy
+
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "my_custom_analyzer": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "my_custom_filter"]
+        }
+      },
+      "filter": {
+        "my_custom_filter": {
+          "type": "stop",
+          "stopwords": ["_english_"]
+        }
+      }
+    }
+  }
+}
+
+3. Налаштування refresh interval:
+
+    refresh_interval: Визначає, як часто індекс оновлюється для пошуку. Наприклад, 1s (1 секунда) або 30s (30 секунд).
+
+json
+Copy
+
+{
+  "index": {
+    "refresh_interval": "30s"
+  }
+}
+
+4. Налаштування merge policy:
+
+    merge.policy: Налаштування політики злиття сегментів.
+
+        merge.policy.max_merge_at_once: Максимальна кількість сегментів для злиття.
+
+        merge.policy.segments_per_tier: Кількість сегментів на рівень.
+
+json
+Copy
+
+{
+  "index": {
+    "merge": {
+      "policy": {
+        "max_merge_at_once": 10,
+        "segments_per_tier": 10
+      }
+    }
+  }
+}
+
+5. Налаштування кешування:
+
+    index.queries.cache.enabled: Увімкнути або вимкнути кеш запитів.
+
+json
+Copy
+
+{
+  "index": {
+    "queries": {
+      "cache": {
+        "enabled": true
+      }
+    }
+  }
+}
+
+6. Налаштування mapping:
+
+    Ви можете визначити мапінги для полів індексу, щоб вказати типи даних та аналізатори.
+
+json
+Copy
+
+{
+  "mappings": {
+    "properties": {
+      "title": {
+        "type": "text",
+        "analyzer": "my_custom_analyzer"
+      },
+      "date": {
+        "type": "date"
+      }
+    }
+  }
+}
+
+7. Налаштування lifecycle management (ILM):
+
+    Ви можете вказати політики управління життєвим циклом індексу (ILM).
+
+json
+Copy
+
+{
+  "settings": {
+    "index.lifecycle.name": "my_policy",
+    "index.lifecycle.rollover_alias": "my_alias"
+  }
+}
+
+8. Налаштування store:
+
+    index.store.type: Тип зберігання даних (наприклад, fs для файлової системи).
+
+json
+Copy
+
+{
+  "index": {
+    "store": {
+      "type": "fs"
+    }
+  }
+}
+
+9. Налаштування translog:
+
+    index.translog.durability: Налаштування транзакційного логу (наприклад, request для синхронного запису).
+
+json
+Copy
+
+{
+  "index": {
+    "translog": {
+      "durability": "request"
+    }
+  }
+}
+
+10. Налаштування allocation:
+
+    Ви можете керувати розподілом шардів по вузлах кластера.
+
+        index.routing.allocation.include.{attribute}: Включити вузли з певним атрибутом.
+
+        index.routing.allocation.exclude.{attribute}: Виключити вузли з певним атрибутом.
+
+json
+Copy
+
+{
+  "index": {
+    "routing": {
+      "allocation": {
+        "include": {
+          "region": "europe"
+        }
+      }
+    }
+  }
+}
+
+11. Налаштування compression:
+
+    index.codec: Тип стиснення даних (наприклад, best_compression для максимального стиснення).
+
+json
+Copy
+
+{
+  "index": {
+    "codec": "best_compression"
+  }
+}
+
+12. Налаштування fielddata:
+
+    index.fielddata.cache.size: Обмеження розміру кешу fielddata.
+
+json
+Copy
+
+{
+  "index": {
+    "fielddata": {
+      "cache": {
+        "size": "20%"
+      }
+    }
+  }
+}
+
+13. Налаштування similarity:
+
+    Ви можете визначити власні алгоритми подібності для пошуку.
+
+json
+Copy
+
+{
+  "settings": {
+    "index": {
+      "similarity": {
+        "my_custom_similarity": {
+          "type": "BM25",
+          "b": 0.75,
+          "k1": 1.2
+        }
+      }
+    }
+  }
+}
+
+14. Налаштування max result window:
+
+    index.max_result_window: Максимальна кількість документів, які можна повернути в одному запиті.
+
+json
+Copy
+
+{
+  "index": {
+    "max_result_window": 10000
+  }
+}
+
+15. Налаштування max refresh listeners:
+
+    index.max_refresh_listeners: Максимальна кількість слухачів оновлення.
+
+json
+Copy
+
+{
+  "index": {
+    "max_refresh_listeners": 1000
+  }
+}
+
+16. Налаштування slowlog:
+
+    Ви можете налаштувати логування повільних запитів.
+
+        index.search.slowlog.threshold.query.warn: Поріг для попередження про повільні запити.
+
+        index.indexing.slowlog.threshold.index.info: Поріг для інформації про повільну індексацію.
+
+json
+Copy
+
+{
+  "index": {
+    "search": {
+      "slowlog": {
+        "threshold": {
+          "query": {
+            "warn": "10s"
+          }
+        }
+      }
+    },
+    "indexing": {
+      "slowlog": {
+        "threshold": {
+          "index": {
+            "info": "5s"
+          }
+        }
+      }
+    }
+  }
+}
+}

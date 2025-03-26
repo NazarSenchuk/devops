@@ -1,0 +1,207 @@
+1. Redirect errors to another html 
+
+
+{
+	...
+	location /buy {
+        return 503;
+   	 }	
+
+    error_page 503 500 504 /50x.html;
+
+}
+If you have 503 error site redirect you to 50x.html 
+
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+2. Limit request from ip
+
+
+nginx.conf
+http {
+
+	limit_req_zone $binary_remote_addr zone=login_limit:10m rate=5r/m;
+
+}
+
+default{
+	location / {
+	limit_req zone=login_limit burst=10 nodelay;	
+}
+}
+
+Задаёт зону разделяемой памяти (zone) и максимальный размер всплеска запросов (burst). Если скорость поступления запросов превышает описанную в зоне, то их обработка задерживается так, чтобы запросы обрабатывались с заданной скоростью. Избыточные запросы задерживаются до тех пор, пока их число не превысит максимальный размер всплеска. При превышении запрос завершается с ошибкой. По умолчанию максимальный размер всплеска равен нулю. Например, директивы 
+
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+3. Cache 
+Setting:
+http{
+proxy_cache_path /tmp/nginx_cache  levels=1:2 keys_zone=my_cache:10m inactive=60m max_size =100m ;
+}
+
+----
+/tmp/nginx_cache  -  директорія де буде зберігатись кеш
+------
+levels = 1:2 - рівні директорії
+наприклад якщо  levels = 1 то кеш буде зберігатись в /tmp/nginx_cache/8/ 
+8 - це остання цифра індетифікатора кешу
+levels=2 -> /tmp/nginx_cache/b/
+levels= 1:2  -> /tmp/nginx_cache/8b/
+------------
+keyzone=10m  -> скільки буде виділятись пам'яті в оперативці
+------
+inactive = 60m -> якщо срок зберігання кешу вийде то він ще буде зберігатись 60 хв а потім видалиться
+------
+max_size =100m максимальний обсяг який може займати кеш на диску;
+--------
+
+default {
+location / {
+	proxy_cache my_cache;  
+	proxy_cache_valid 200 1m;
+	proxy_cache_valid 500 5m;
+	proxy_cache_methods GET HEAD;   
+	#proxy_cache_valid any 5m; 
+	#proxy_cache_use_stale error timeout invalid_header updating;
+}
+}
+---
+proxy_cache_valid 200 1m; -> кешує всі запроси з статусом 200 на хвилину 
+----
+proxy_cache_valid_any 5m ;  -> кешує всі запроси незважаючи на статус
+----
+proxy_cache_use_stale error timeout invalid_header updating ; -> якщо нема доступу до бекенду то бере останній успішний кешований запрос.
+----
+proxy_cache_background_update on ; -> валідує кеш в фоні а не під час виклику запросу 
+-----
+proxy_cache_lock on ; -> під час першої групи запросів до бекенду перший запрос закешується і потім будуть братись з кешу  а не кожний раз звертатись до бекенду
+------
+proxy_cache_methods GET HEAD;  -кешує тільки GET HEAD запроси
+-------
+proxy_cache_bypass $http_cookie;    # Не кешувати, якщо є куки (наприклад, сесія)
+proxy_no_cache $http_cookie;        # Аналогічно
+---------
+
+Приклади:
+Базове кешування статичних файлів (CSS, JS, зображень)
+http {
+    proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=static_cache:10m inactive=24h use_temp_path=off;
+
+    server {
+        listen 80;
+        server_name static.example.com;
+
+        location ~* \.(css|js|png|jpg|jpeg|gif|ico)$ {
+            proxy_cache static_cache;
+            proxy_pass http://localhost:8080;  # Припустимо, статика лежить тут
+            proxy_cache_valid 200 7d;          # Кешувати успішні відповіді 7 днів
+            add_header X-Cache-Status $upstream_cache_status;
+            expires max;                      # Додає HTTP-заголовок Expires
+        }
+    }
+}
+Кешування API-відповідей (динамічний контент)
+http {
+    proxy_cache_path /var/cache/nginx/api levels=1:2 keys_zone=api_cache:10m inactive=5m;
+
+    server {
+        listen 80;
+        server_name api.example.com;
+
+        location /data {
+            proxy_pass http://localhost:3000/data;
+            proxy_cache api_cache;
+            proxy_cache_valid 200 1m;          # Кешувати 200-відповіді на 1 хвилину
+            proxy_cache_methods GET HEAD;      # Кешувати лише GET/HEAD
+            proxy_cache_key "$scheme$request_method$host$request_uri";
+            add_header X-Cache-Status $upstream_cache_status;
+        }
+    }
+}
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+4.Spliting 
+http {
+    split_clients "${remote_addr}${http_user_agent}" $variant {
+        50%   "/var/www/version-a";
+        50%   "/var/www/version-b";
+    }
+
+    server {
+        listen 80;
+        server_name yourdomain.com;
+
+        location / {
+            root $variant;
+            index index.html;
+        }
+    }
+}
+
+
+${remote_addr}${http_user_agent}${time_iso8601} -> якщо тестуєте з однієї машини тому що це символьний рядок для класифікації 
+якщо б ми використали тільки ${remote_addr} то nginx класифікує нас з 50% на якусь версію і ми будем слати запроси тільки не цю версію
+${remote_addr}${http_user_agent} -> якщо змінимо наприклад наш браузер то буде класифікувати по новому
+---------------------------------------------
+Цей метод ми використовуємо як рандомізацію змінних 
+--------------------------------------------------
+
+
+
+
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+5. Geoblocking (Allow/Deny by Country)
+
+sudo apt install libgeoip-dev geoip-database
+
+http {
+    geoip_country /usr/share/GeoIP/GeoIP.dat;
+
+    map $geoip_country_code $allowed_country {
+        default yes;
+        RU no;  # Example: Block Russia
+        CN no;  # Example: Block China
+    }
+
+    server {
+        listen 80;
+        server_name yourdomain.com;
+
+        if ($allowed_country = no) {
+            return 403 "Access Denied";
+        }
+    }
+}
+
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+6. IP Blocking 
+
+location / {  
+    deny 192.168.1.100;  
+    allow all;  
+}  
+
+
+
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+7. Loadbalancing
+upstream python_apps {  
+    server 192.168.1.20:8000;  # Django (Gunicorn/Uvicorn)  
+    server 192.168.1.21:8000;  # Flask (Gunicorn)  
+}  
+
+server {  
+    location / {  
+        proxy_pass http://python_apps;  
+        proxy_set_header Host $host;  
+        proxy_set_header X-Real-IP $remote_addr;  
+    }  
+}  
+
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+8. HEALTH
+location /health {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }

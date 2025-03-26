@@ -1,0 +1,24 @@
+Instalation of  Metricbeat:
+sudo apt install metricbeat
+
+in /etc/metricbeat/metricbeat.yml:
+elasticsearch.output:
+   hosts: ["ip_of_host"]
+setup.kibana:
+   hosts: ["ip_of_host"]
+
+sudo metricbeat modules enable elasticsearch-xpack
+
+in /etc/metricbeat/module.conf/elasticsearch-xpack
+
+- module: elasticsearch
+  xpack.enabled: true
+  period: 10s
+  hosts: ["http://localhost:9200","http://172.31.42.132:9200"]
+  #username: "user"
+  #password: "secret"
+  #api_key: "foo:bar"
+
+restart metricbeat and elasticsearch
+
+after go to kibana and monitor

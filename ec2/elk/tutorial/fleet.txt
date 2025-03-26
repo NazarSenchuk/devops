@@ -1,0 +1,14 @@
+1. Secure elasticsearch 
+2. Install kibana 
+3. Connect Kibana to elasticsearch https connection
+4. Setup Fleet server:
+URL must be: https://server_ip:8220 (port 8220 optional)
+activation fleet server
+
+sudo elastic-agent enroll   --fleet-server-es=https://172.31.44.214:9200  --fleet-server-es-ca=/home/ubuntu/elasticsearch-ca.pem   --fleet-server-service-token=AAEAAWVsYXN0aWMvZmxlZXQtc2VydmVyL3Rva2VuLTE3NDI0MDkzODc0NjU6ZlpCT0dtUmhTWjZYZzU1N3FmUFBwUQ   --fleet-server-policy=fleet-server-policy   --fleet-server-port=8220
+
+
+5.Installing agents
+activation
+
+sudo elastic-agent enroll --url=https://172.31.38.241:8220 --enrollment-token=MXphYnI1VUJWakIyd0R5VkJEYlU6MnNGOFB3YnFRWW1tR21UUjdfaU5HZw== --certificate-authorities=/home/ubuntu/elasticsearch-ca.pem --insecure

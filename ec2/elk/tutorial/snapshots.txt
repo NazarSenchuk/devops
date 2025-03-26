@@ -1,0 +1,32 @@
+s3 bucket permisions:
+{
+    "Version": "2012-10-17",
+    "Id": "BucketPolicy",
+    "Statement": [
+        {
+            "Sid": "AllAccess",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": [
+                "arn:aws:s3:::elasticsearchnazarsenchuk",
+                "arn:aws:s3:::elasticsearchnazarsenchuk/*"
+            ]
+        }
+    ]
+}
+
+
+Settings tokens on every node :
+sudo /usr/share/elasticsearch/bin/elasticsearch-keystore add s3.client.default.secret_key
+sudo /usr/share/elasticsearch/bin/elasticsearch-keystore add s3.client.default.access_key
+
+sudo systemctl restart elasticsearch
+
+Creating repository:
+
+client:default
+bucket: name of bucket ( elasticsearchnazarsenchuk)
+path: snapshots/
+
+

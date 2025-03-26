@@ -1,0 +1,66 @@
+# https://www.elastic.co/guide/en/beats/filebeat/index.html
+
+# For more available modules and options, please see the filebeat.reference.yml sample
+# configuration file.
+
+# ============================== Filebeat inputs ===============================
+
+filebeat.inputs:
+
+# Each - is an input. Most options can be set at the input level, so
+# you can use different inputs for various configurations.
+# Below are the input specific configurations.
+- type: filestream
+
+  # Unique ID among all inputs, an ID is required.
+  id: my-filestream-id
+
+  # Change to true to enable this input configuration.
+  enabled: true
+
+  # Paths that should be crawled and fetched. Glob based paths.
+  paths:
+    - /var/log/*.log
+    - /var/log/apache2/*.log
+processors:
+  - dissect:
+      tokenizer: "%{ip} - - [%{date}] \"%{method} %{path} HTTP/%{http_version}\" %{status} %{bytes} \"%{referrer}\" \"%{user_agent}\""
+      field: "message"
+      target_prefix: ""
+
+filebeat.config.modules:
+  # Glob pattern for configuration loading
+  path: ${path.config}/modules.d/*.yml
+
+  # Set to true to enable config reloading
+  reload.enabled: false
+
+  # Period on which files under path should be checked for changes
+  #reload.period: 10s
+
+# ======================= Elasticsearch template setting =======================
+
+setup.template.settings:
+  index.number_of_shards: 1
+  #index.codec: best_compression
+  #_source.enabled: false
+
+
+# ================================== General ===================================
+
+# The name of the shipper that publishes the network data. It can be used to group
+# =================================== Kibana ===================================
+
+# Starting with Beats version 6.0.0, the dashboards are loaded via the Kibana API.
+# This requires a Kibana endpoint configuration.
+setup.kibana:
+
+  # Kibana Host
+# ------------------------------ Logstash Output -------------------------------
+output.logstash:
+  # The Logstash hosts
+  hosts: ["127.0.0.1:5044"]
+
+  # Optional SSL. By default is off.
+  # List of root certificates for HTTPS server verifications
+#migration.6_to_7.enabled: true

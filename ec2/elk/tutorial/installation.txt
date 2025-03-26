@@ -1,0 +1,58 @@
+https://phoenixnap.com/kb/how-to-install-elk-stack-on-ubuntu
+
+Elasticsearch installation:
+
+wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo gpg --dearmor -o /usr/share/keyrings/elasticsearch-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/elasticsearch-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main" | sudo tee /etc/apt/sources.list.d/elastic-8.x.list
+sudo apt update
+sudo apt install elasticsearch
+sudo systemctl daemon-reload
+sudo systemctl enable elasticsearch.service
+sudo systemctl start elasticsearch.service
+
+
+
+Configure Elasticsearch:
+sudo chmod 777 /etc/elasticsearch/
+
+file jvm.options
+file elasticserach.yml
+
+
+Kibana:
+	sudo apt-get install kibana
+sudo systemctl enable kibana
+sudo systemctl start kibana
+in kibana.yml
+server.host: “0.0.0.0”
+
+
+
+
+Logstash:
+	sudo apt install logstash
+sudo systemctl enable logstash
+sudo systemctl start logstash
+
+in logstash.yml
+
+
+Filebeat:
+sudo apt install filebeat
+
+sudo nano /etc/filebeat/filebeat.yml
+
+
+output.logstash
+     hosts: ["localhost:5044"]	
+
+sudo filebeat modules enable system
+
+
+sudo filebeat setup --index-management -E output.logstash.enabled=false -E output.elasticsearch.hosts=["localhost:9200"]
+
+sudo systemctl enable filebeat
+
+sudo systemctl start filebeat
+
+curl -XGET http://localhost:9200/_cat/indices?v

@@ -1,0 +1,63 @@
+1. INSTALING ELASTICSEARCH
+2.INSTALLING KIBANA 
+3.SETTING ELASTICSEARCH 
+
+CREATING TEMPLATE:
+
+index pattern: pattern of future index (example:apache-log*)
+priority: 1100
+
+index settings:
+index{
+"default_pipeline":"name_of_future_pipeline_" (ecample:apache pipeline)
+}
+
+mapping:
+Text: message
+
+
+CREATING PIPELINE:
+name: name that you write in template
+
+add processot grok:
+field : message
+pattern: %{IPORHOST:clientip} %{USER:ident} %{USER:auth} \\[%{HTTPDATE:timestamp}\\] \"%{WORD:verb} %{DATA:request} HTTP/%{NUMBER:httpversion}\" %{NUMBER:response} (?:%{NUMBER:bytes}|-) \"%{DATA:referrer}\" \"%{DATA:useragent}\"
+
+FILEBEAT:
+
+filebeat.yml:
+filebeat.inputs:                                                                                                                                                             
+  - type: log                                                                                                                                                                
+    enabled: true                                                                                                                                                            
+    paths:                                                                                                                                                                   
+      - /var/log/apache2/access.log                                                                                                                                          
+      - /var/log/apache2/error.log    #- c:\programdata\elasticsearch\logs\*                                                                                                 
+                                                                                                                                                                             
+
+filebeat.config.modules:
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: enable
+  reload.period: 10s
+
+
+output.elasticsearch:
+  hosts: ["localhost:9200"]
+  index: "name that you chose in template%{+yyyy.MM.dd}"
+  preset: balanced
+
+
+setup.template:
+  name: "name of template"  # Назва вашого шаблону
+  enabled: false  # Protocol - either `http` (default) or `https`.
+
+
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_cloud_metadata: ~
+  - add_docker_metadata: ~
+  - add_kubernetes_metadata: ~
+
+
+sudo filebeat setup --index-management (by situation)
+

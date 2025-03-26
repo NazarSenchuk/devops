@@ -1,0 +1,53 @@
+https://www.elastic.co/guide/en/elasticsearch/reference/current/security-basic-setup.html
+
+для всіх сертів робити 
+sudo chown root:elasticsearch сертифікат
+sudo chmod 660 сертифікат
+all comands: 
+/usr/share/elasticsearch/bin/elasticsearch-certutil ca
+/usr/share/elasticsearch/bin/elasticsearch-certutil cert --ca elastic-stack-ca.p12
+sudo cp /usr/share/elasticsearch/elastic-certificates.p12 /etc/elasticsearch/certs/
+/usr/share/elasticsearch/bin/elasticsearch-keystore add xpack.security.transport.ssl.keystore.secure_password
+/usr/share/elasticsearch/bin/elasticsearch-keystore add xpack.security.transport.ssl.truststore.secure_password
+
+change elasticsearch.yml  transport.ssl
+----------------------------------------------------------------------------------------------------------------------
+https configration
+
+
+sudo /usr/elasticsearch/bin/elasticsearch-certutil  http
+in ~ directory for example:
+unzip /usr/share/elasticsearch/elasticsearch-ssl-http.zip
+mv /etc/elasticsearch/certs/http.p12 /etc/elasticsearch/certs/http.p12.old
+cp ~/elasticsearch/http.p12   /etc/elasticsearch/certs/http.p12
+
+chown root:elasticsearch /etc/elasticsearch/certs/http.p12 
+chmod 750 /etc/elasticsearch/certs/http.p12 
+sudo /usr/share/elasticsearch/bin/elasticsearch-users useradd senchuknazar6 -p senchuknazar6 -r superuser
+sudo /usr/share/elasticsearch/bin/elasticsearch-keystore add xpack.security.http.ssl.keystore.secure_password
+curl -XGET "https://172.31.44.214:9200/_cluster/health?pretty"   -u senchuknazar6:senchuknazar6   --cacert elasticsearch-ca.pem 
+
+for kibana:
+sudo /usr/share/elasticsearch/bin/elasticsearch-reset-password -u kibana_system -i
+kibana.yml
+elasticsearch.hosts: ["https://172.31.42.165:9200"]
+elasticsearch.username: "kibana_system"
+elasticsearch.password: "senchuknazar6"
+elasticsearch.ssl.certificateAuthorities: ["/etc/kibana/elasticsearch-ca.pem"]
+
+
+for kibana https:
+/usr/share/elasticsearch/bin/elasticsearch-certutil csr -name kibana-server 
+unzip archive 
+/usr/share/elasticsearch/bin/elasticsearch-certutil cert --pem -ca /usr/share/elasticsearch/elastic-stack-ca.p12 -name kibana-server
+
+also upzip 
+copy kibana-server.crt
+copy kibana-server.key
+
+
+kibana.yml
+server.ssl.enabled: true
+server.ssl.certificate: /etc/kibana/kibana-server.crt
+server.ssl.key: /etc/kibana/kibana-server.key
+
