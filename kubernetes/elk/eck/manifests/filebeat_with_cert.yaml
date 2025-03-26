@@ -1,0 +1,54 @@
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: quickstart
+spec:
+  type: filebeat
+  version: 8.17.4
+  elasticsearchRef:
+    name: quickstart
+  # Removed invalid http section - TLS is configured in the output section below
+  config:
+    filebeat.inputs:
+    - type: filestream
+      enabled: true
+      paths:
+      - /var/log/*.log
+      - /var/log/nginx-containers/*.log
+    output.elasticsearch:
+      hosts: ["https://quickstart-es-http.default.svc:9200"]  # Assuming this is your ES service name
+      username: "elastic"
+      password: "x68P304UIA55NK6uOdo6qI3q"
+      ssl:
+        certificate_authorities: ["/usr/share/filebeat/config/elasticsearch-certs/ca.crt"]
+      
+      index: "filebeat-%{[host.ip]}-%{+yyyy.MM.dd}"
+    setup.template:
+      name: "filebeat"
+      pattern: "filebeat*"
+      enabled: false
+    setup.ilm.enabled: false
+    processors:
+    - add_host_metadata: {}
+  daemonSet:
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0
+        containers:
+        - name: filebeat
+          volumeMounts:
+          - name: host-mount
+            mountPath: /var/log/nginx-containers
+            readOnly: true
+          - name: es-certs
+            mountPath: /usr/share/filebeat/config/elasticsearch-certs
+            readOnly: true
+        volumes:
+        - name: host-mount
+          hostPath:
+            path: /var/log/nginx-containers
+            type: DirectoryOrCreate
+        - name: es-certs
+          secret:
+            secretName: quickstart-es-http-certs-internal

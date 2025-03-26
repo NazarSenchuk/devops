@@ -1,0 +1,45 @@
+1. Setup operator
+2. Make certificates:
+openssl req -x509 -sha256 -nodes -newkey rsa:4096 -days 365 -subj "/CN=quickstart-es-http" -addext "subjectAltName=DNS:quickstart-es-http.default.svc" -keyout tls.key -out tls.crt
+CN  = quickstart-es-http  імя до якого будем звертатись
+3.Create secret:
+kubectl create secret generic quickstart-es-cert --from-file=ca.crt=tls.crt --from-file=tls.crt=tls.crt --from-file=tls.key=tls.key
+
+4. Configure elasticsearch cluster
+
+
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: 8.17.3
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.store.allow_mmap: false
+  http:
+    service:
+      spec:
+        type: LoadBalancer
+    tls:
+      selfSignedCertificate:
+        subjectAltNames:
+          - ip: Айпі які будуть використані для підключення 
+      certificate:
+        secretName: my-tls-secret
+
+5. If  cluster dont work , delete pod , and start again
+
+6. Test by request:
+
+
+
+пароль = kubectl get secret (назва кластеру)-es-elastic-user -o go-template='{{.data.elastic | base64decode }}'
+
+Отримання сертифікату: kubectl get secret quickstart-es-http-certs-internal -o jsonpath='{.data.ca\.crt}' | base64 --decode > ca.crt
+
+
+
+curl -v -u elastic:пароль https://Айпі:9200 --cacert ca.crt

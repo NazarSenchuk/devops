@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-html-config
+data:
+  # Ключ "index.html" — це ім'я файлу, яке буде створено в контейнері
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Мій сайт</title>
+    </head>
+    <body>
+        <h1>Привіт від Nginx в Kubernetes11211!</h1>
+        <p>Цей HTML-файл зберігається в ConfigMap.</p>
+    </body>
+    </html>
+---

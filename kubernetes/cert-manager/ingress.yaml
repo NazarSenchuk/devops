@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-ingress
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-dev
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: nginx.senchuknazar123.online
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: nginx-service 
+                port:
+                  number: 80
+            path: /
+
+  tls:
+    - hosts:
+      - nginx.senchuknazar123.online
+      secretName: argocd-ingress-http      

@@ -1,0 +1,26 @@
+apiVersion: apps/v1  # ✅ Fixed: "api" → "apiVersion"
+kind: DaemonSet      # ✅ Fixed: "Daemonset" → "DaemonSet" (case-sensitive)
+metadata:
+  name: nginx
+spec:
+  selector:          # ✅ Added: Required for DaemonSet (matches Pod template labels)
+    matchLabels:
+      app: nginx
+  template:          # ✅ Added: Pod template is required under `spec.template`
+    metadata:
+      labels:
+        app: nginx   # ✅ Matches selector
+    spec:
+      containers:
+      - name: nginx  # ✅ Fixed: Moved under `containers` (with `-` for list)
+        image: nginx
+        ports:
+        - containerPort: 80  # ✅ Fixed: "to_port" → "containerPort", "port" is not valid
+        volumeMounts:
+        - name: host-volume
+          mountPath: /var/log/nginx/  # ✅ Trailing slash is optional
+      volumes:
+      - name: host-volume
+        hostPath:
+          path: /var/log/nginx-containers
+          type: DirectoryOrCreate

@@ -1,0 +1,13 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: monitored-sample
+spec:
+  version: 8.17.3
+  elasticsearchRef:
+    name: quickstart
+  http:
+    tls:
+      certificate:
+        secretName: quickstart-es-http-certs-internal
+  count: 1

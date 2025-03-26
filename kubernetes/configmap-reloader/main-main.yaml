@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sample-data
+data:
+  hello: mathis1!  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: sample-app
+  name: sample-app
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: sample-app
+  template:
+    metadata:
+      labels:
+        app: sample-app
+    spec:
+      containers:
+      - image: mathisve/reloader-example-1:latest
+        name: example-1
+        envFrom:
+        - configMapRef:
+            name: sample-data
+        resources:
+          limits:
+            memory: 10Mi
+            cpu: 10m
+        imagePullPolicy: Always
