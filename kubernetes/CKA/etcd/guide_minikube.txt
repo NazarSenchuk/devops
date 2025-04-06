@@ -1,0 +1,37 @@
+healthy:
+kubectl exec -n kube-system etcd-minikube -- \
+  etcdctl --endpoints=https://127.0.0.1:2379 \
+  --cacert=/var/lib/minikube/certs/etcd/ca.crt \
+  --cert=/var/lib/minikube/certs/etcd/server.crt \
+  --key=/var/lib/minikube/certs/etcd/server.key \
+  endpoint health
+
+
+
+working with etcdctl:
+Key-Value Operations
+Command	Description
+etcdctl put key  value #Set a key-value pair
+etcdctl get key	 #Get a key’s value
+etcdctl del key	 #Delete a key
+etcdctl get --prefix ""	 #List all keys
+etcdctl watch key	
+
+backup & restore etcd:
+Create a Snapshot
+
+ETCDCTL_API=3 etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/path/to/ca.crt \
+  --cert=/path/to/server.crt \
+  --key=/path/to/server.key \
+  snapshot save snapshot.db
+
+Restore from Snapshot
+
+ETCDCTL_API=3 etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/path/to/ca.crt \
+  --cert=/path/to/server.crt \
+  --key=/path/to/server.key \
+  snapshot restart snapshot.db

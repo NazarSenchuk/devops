@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nginx-daemonset
+  namespace: default  # Change this to your desired namespace
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: nginx-logs
+          mountPath: /var/log/nginx/
+      volumes:
+      - name: nginx-logs
+        hostPath:
+          path: /var/log/nginx/
+          type: DirectoryOrCreate

@@ -1,0 +1,114 @@
+Components:
+-Distributer:
+Handling incoming requests with logs
+Preprocess  logs
+Validate logs
+Hash logs
+Sends to Ingester
+
+-Ingester:
+Persisting logs
+Sends logs to long-term storages
+Timestamp ordering (log will be flashed if it have indentical timestamp and data)
+
+
+-Query frontend:
+Quering
+Accelereting read path
+Caching
+
+-Querier:
+Handles logq queries
+Fetching data from storages and ingesters
+Combines logs from storage and ingester
+
+
+-Compactor:
+Makes indexes more efficient
+Lifecycled of chunks and indexes
+Deletion old logs
+----------------------------------------------------------------------------------------------
+Fewer labels = better performance.
+Simpler log = better performance.
+Dynamic logs is bad
+example:
+
+Variable is not defined (TraceID: abc123, Timestamp: 2024-01-01T12:34:56) - bad due to  dinamic trace id and timestamp 
+Variable is not defined - good
+
+timestamp: 12:32  ip: 32.51.24.56 user_id: 43242  message: hello  -> very bad
+message: hello   -> good
+
+use 'status:5xx' than 'status:501 (502,503,507)'
+
+--------------------------------------------------------------------------------------------------
+A hash ring (also known as a consistent hashing ring) is a distributed data structure used to evenly distribute information about comminication and 
+workload among cluster.
+In Grafana Loki, the hash ring is used to:
+
+    Distribute log streams across ingesters (components that store logs).
+
+    Ensure scalability (new ingesters can join without massive data reshuffling).
+
+    Handle failures (if an ingester crashes, its workload is redistributed).
+--------------------------------------------------------------------------------------------------------------
+
+
+Configuration:
+
+auth_enabled: false  # Set to true if using authentication
+
+
+server:
+  http_listen_port: 3100  
+  grpc_listen_port: 9096 #used for internal comunnication between components
+
+common:
+  path_prefix: /tmp/loki #path in storage
+  storage:
+    filesystem:
+      chunks_directory: /tmp/loki/chunks  #chunks path
+      rules_directory: /tmp/loki/rules  #rules path
+  replication_factor: 1  #how many copies of your log data are stored across diferent ingesters
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory #key value store ( can be consul and etcd) 
+      
+
+      
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: boltdb-shipper
+      object_store: filesystem # can be aws or minio
+      schema: v11
+      index:
+        prefix: index_
+        period: 24h
+
+storage_config: 
+  boltdb_shipper:
+    active_index_directory: /tmp/loki/boltdb-shipper-active
+    cache_location: /tmp/loki/boltdb-shipper-cache
+    cache_ttl: 24h
+    shared_store: filesystem
+  filesystem:
+    directory: /tmp/loki/chunks
+    
+    
+ limits_config:
+  enforce_metric_name: false # if true: requires all logs have a __name__ label
+  reject_old_samples: true #deletion logs with old timestamp
+  reject_old_samples_max_age: 168h # deletion logs older than 168 h
+  ingestion_rate_mb: 16 #control maximum allowed ingestion rate per tenant
+  ingestion_burst_size_mb: 32
+  max_entries_limit_per_query: 5000 #Limits the number of log entries returned by a single query
+  retention_period: 744h # 31 days
+      
+      
+      
+      
+      
+      
+      

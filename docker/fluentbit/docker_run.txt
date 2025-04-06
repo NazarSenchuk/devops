@@ -1,0 +1,5 @@
+docker run -ti \
+  -v /var/log/nginx/*.log:/var/log/nginx/ \
+  -v /home/nazar/devops/docker/fluentbit/fluent-bit.conf:/fluent-bit.conf \
+  fluent/fluent-bit:3.0 \
+  /fluent-bit/bin/fluent-bit -c /fluent-bit.conf

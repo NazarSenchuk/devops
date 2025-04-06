@@ -1,0 +1,2 @@
+https://github.com/BigKAA/youtube/tree/master/kubeadm
+https://habr.com/ru/articles/725640/

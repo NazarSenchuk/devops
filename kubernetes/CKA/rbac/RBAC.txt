@@ -1,0 +1,99 @@
+ServiceAccount
+
+A ServiceAccount is used to access the Kubernetes API from applications.
+When a pod is created in the system, it is automatically assigned the default ServiceAccount of the current namespace by default.
+
+To view ServiceAccounts in a namespace, use the following command:
+# kubectl -n kubetest get serviceaccounts
+
+You can create a ServiceAccount directly in the command line:
+# kubectl -n kubetest create serviceaccount testaccount
+
+Or via a YAML file:
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: testaccount
+  namespace: kubetest
+
+# kubectl apply -f file.yaml
+
+If an application (pod) is launched without explicitly specifying a ServiceAccount, it is assigned the default ServiceAccount.
+To define a ServiceAccount for a pod, use serviceAccountName in the pod’s specification.
+When an application starts, the directory /var/run/secrets/kubernetes.io/serviceaccount is automatically mounted inside the pod, containing the following files:
+    ca.crt – The cluster’s CA certificate.
+    namespace – Contains the name of the pod’s namespace.
+    token – Contains the token used to access the cluster API.
+
+If you want to access the cluster API not from an application but, for example, from the command line using curl, you need to retrieve the token of the corresponding ServiceAccount:
+
+# kubectl -n kubetest get secret $(kubectl -n kubetest get serviceaccount kubetest-account \
+-o jsonpath="{.secrets[0].name}") -o jsonpath="{.data.token}" | base64 --decode
+---------------------------------------------------------------------------------------------------------------------------------------------------
+
+Role and ClusterRole
+An RBAC Role or ClusterRole contains rules that represent a set of permissions. Permissions are purely additive (there are no "deny" rules).
+A Role always sets permissions within a particular namespace; when you create a Role, you have to specify the namespace it belongs in.
+ClusterRole, by contrast, is a non-namespaced resource. The resources have different names (Role and ClusterRole) because a Kubernetes object always has to be either namespaced or not namespaced; it can't be both.
+ClusterRoles have several uses. You can use a ClusterRole to:
+
+    define permissions on namespaced resources and be granted access within individual namespace(s)
+    define permissions on namespaced resources and be granted access across all namespaces
+    define permissions on cluster-scoped resources
+    
+If you want to define a role within a namespace, use a Role; if you want to define a role cluster-wide, use a ClusterRole.
+
+
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: developers
+  name: pod-reader
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources: ["pods"]
+  verbs: ["get", "watch", "list"]
+ 
+ ------------
+  
+ 
+  apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  # "namespace" omitted since ClusterRoles are not namespaced
+  name: secret-reader
+rules:
+- apiGroups: [""]
+  #
+  # at the HTTP level, the name of the resource for accessing Secret
+  # objects is "secrets"
+  resources: ["secrets"]
+  verbs: ["get", "watch", "list"]
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+
+RoleBinding and ClusterRoleBinding
+
+A role binding grants the permissions defined in a role to a user or set of users. It holds a list of subjects (users, groups, or service accounts), and a reference to the role being granted. A RoleBinding grants permissions within a specific namespace whereas a ClusterRoleBinding grants that access cluster-wide.
+A RoleBinding may reference any Role in the same namespace. Alternatively, a RoleBinding can reference a ClusterRole and bind that ClusterRole to the namespace of the RoleBinding. If you want to bind a ClusterRole to all the namespaces in your cluster, you use a ClusterRoleBinding.
+The name of a RoleBinding or ClusterRoleBinding object must be a valid path segment name.
+
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-pods
+  namespace: developers
+subjects:
+# You can specify more than one "subject"
+- kind: User
+  name: nazar # "name" is case sensitive
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+
+  kind: Role #this must be Role or ClusterRole
+  name: pod-reader # this must match the name of the Role or ClusterRole you wish to bind to
+  apiGroup: rbac.authorization.k8s.io
+

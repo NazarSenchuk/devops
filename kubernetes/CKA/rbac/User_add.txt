@@ -1,0 +1,65 @@
+Creating key:
+openssl genrsa -out myuser.key 3072
+
+
+Creating x.509  certificate:
+openssl req -new -key myuser.key -out myuser.csr -subj "/CN=myuser/O=developers"
+
+
+Creating CertificatiSigninRequest
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: myuser # example
+spec:
+  # This is an encoded CSR. Change this to the base64-encoded contents of myuser.csr
+  request: ${BASE64_CSR}
+  signerName: kubernetes.io/kube-apiserver-client
+  expirationSeconds: 86400  # one day
+  usages:
+  - client auth
+
+
+cat csr.yaml | envsubst | kubectl apply -f -
+ 
+kubectl certificate approve myuser 
+
+
+!!!!!!Getting information about certificate!!!
+kubectl get csr artur_csr -o jsonpath={.status.certificate} | base64 --decode > myuser.crt
+openssl x509 -in myuser.crt  -noout -text
+
+
+
+
+
+Creating config file for user:
+
+kubectl cluster-info
+
+Kubernetes master is running at https://192.168.218.49:6443
+
+#minikube ssh -- "sudo cat /var/lib/minikube/certs/ca.crt" > ./ca.crt (if you use minikube)
+
+kubectl config --kubeconfig=./config set-cluster k8s --server=https://192.168.218.49:6443 \
+--certificate-authority=/etc/kubernetes/pki/ca.crt --embed-certs=true
+
+
+kubectl config --kubeconfig=./config set-credentials myuser --client-key=myuser.key --client-certificate=myuser.crt --embed-certs=true
+
+
+
+kubectl config --kubeconfig=./config set-context default --cluster=k8s --user=artur --namespace developers (Setting default namespace and user)
+
+kubectl config --kubeconfig=./config use-context default
+
+
+Test: kubectl --kubeconfig=./config -n kubetest get pods
+
+If something doesn't work, check  ./config file on vadility
+
+
+Coping config to user pc:
+# mkdir /home/myuser/.kube
+# cp config /home/myuser/.kube
+# chown -R myuser:myuser /home/myuser/.kube

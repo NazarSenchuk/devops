@@ -1,0 +1,25 @@
+version: '3'
+services:
+  elasticsearch:
+    image: elasticsearch:7.8.1
+    ports:
+      - 9200:9200
+    environment:
+      discovery.type: 'single-node'
+      xpack.security.enabled: 'false'
+      
+    networks:
+      - elastic-net  
+  
+  kibana:
+    image: kibana:7.8.1
+    volumes:
+      - ./kibana.yml:/usr/share/kibana/config/kibana.yml
+    ports:
+      - 5601:5601
+    networks:
+      - elastic-net
+
+networks:
+  elastic-net:
+    driver: bridge

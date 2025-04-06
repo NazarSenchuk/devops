@@ -6,6 +6,8 @@ spec:
   version: 8.17.3
   elasticsearchRef:
     name: quickstart
+
+  
   http:
     tls:
       certificate:
