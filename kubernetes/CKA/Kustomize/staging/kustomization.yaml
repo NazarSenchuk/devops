@@ -1,0 +1,25 @@
+---
+resources:
+- ../base
+- ./namespace.yaml
+images:
+- name: nginx
+  # newName: my-nginx
+  newTag: 1.21.6
+
+namePrefix: stg-
+namespace: staging
+
+secretGenerator:
+- name: db-secret
+  literals:
+  - username=admin
+  - password=secret
+
+
+commonLabels:
+  app: nginx
+  env: stg
+
+commonAnnotations:
+  owner: stg-team

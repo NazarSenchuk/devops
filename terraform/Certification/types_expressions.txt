@@ -1,0 +1,72 @@
+Terraform types:
+
+string : ami = "ami-2131321awd"
+number :  size = 12
+bool : termination_protection = false
+null : endpoint = null
+list : regions  = ["region-1"  , "region-2"]
+map  : tags  = { env="Production" , priority=3 }
+object({
+name = string
+age = optional(string)   - {name = "John", age = "12"}
+})
+
+String templates:
+
+
+"Hello , ${var.name}"
+
+"Hello , %{ if var.name != "" }${var.name}%{ else }unnamed%{ endif } "
+
+EOT:
+<<EOT
+%{ for ip in var.aws_instance.*.private_ip}
+server ${ip}
+%{ endfor }
+EOT
+
+
+Conditional Expressions:
+var.example ? "true" : "false"
+
+For Expressions:
+
+[for s in var.list : upper(s) ]
+
+[for k,v in var.map : length(k) + length(v) ]
+
+[for i,v in var.list : "${i} is ${v} "]
+
+[] return a tuple 
+
+Splat Expressions:
+
+[for o in var.list : o.id  ] = var.list[*].id 
+
+Dynamic blocks:
+allows you dynamically construct repeatable nested blocks
+
+
+locals{
+  ingress_rules = [{
+    port = 443
+    description =  "Port 433"
+},
+{ 
+    port = 80 
+    description = "Port 80"
+]}
+
+
+resource "aws_security_group" "main" {
+  dynamic "ingress"{
+    for_each = local.ingress_rules
+    content {
+       description  = ingress.value.description
+       from_port  ingress.value.port
+       to_port  = ingress.value.port 
+       protocol = "tcp"   
+}   
+}
+}
+

@@ -1,0 +1,100 @@
+https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+
+
+The securityContext in Kubernetes allows you to define privilege and access control settings for Pods and Containers. It's a crucial feature for implementing security best practices in your cluster.
+Types of securityContext
+
+There are two levels where you can define security contexts:
+
+    Pod-level securityContext: Applies to all containers in the pod
+
+    Container-level securityContext: Specific to an individual container (overrides pod-level settings)
+
+Common securityContext Settings
+User and Group IDs
+yaml
+
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 3000
+  fsGroup: 2000
+
+    runAsUser: The user ID to run the container processes
+
+    runAsGroup: The primary group ID for the container processes
+
+    fsGroup: Special group that owns volumes mounted to the pod
+
+Privilege Escalation
+yaml
+
+securityContext:
+  allowPrivilegeEscalation: false
+
+Prevents a process from gaining more privileges than its parent process.
+Capabilities
+yaml
+
+securityContext:
+  capabilities:
+    add: ["NET_ADMIN"]
+    drop: ["ALL"]
+
+    add: Linux capabilities to add
+
+    drop: Linux capabilities to remove
+
+SELinux Options
+yaml
+
+securityContext:
+  seLinuxOptions:
+    level: "s0:c123,c456"
+
+Read-only Root Filesystem
+yaml
+
+securityContext:
+  readOnlyRootFilesystem: true
+
+Makes the container's root filesystem read-only (improves security but may require adjustments).
+Privileged Mode
+yaml
+
+securityContext:
+  privileged: true
+
+Gives the container almost all capabilities (dangerous, avoid in production).
+Example Pod Definition
+yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: security-context-demo
+spec:
+  securityContext:
+    runAsUser: 1000
+    fsGroup: 2000
+  containers:
+  - name: sec-ctx-demo
+    image: busybox
+    command: ["sh", "-c", "sleep 1h"]
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+
+Best Practices
+
+    Always run containers as non-root users (runAsUser > 0)
+
+    Drop all capabilities and add only those explicitly needed
+
+    Set allowPrivilegeEscalation: false
+
+    Consider using read-only root filesystems
+
+    Avoid privileged containers in production
+
+    Use Pod Security Standards or Pod Security Admission to enforce policies

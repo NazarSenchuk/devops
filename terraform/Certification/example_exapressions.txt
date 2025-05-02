@@ -1,0 +1,128 @@
+CONDITIONALS:
+variable "environment" {
+  type    = string
+  default = "dev"
+}
+
+resource "aws_instance" "app" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = var.environment == "prod" ? "t3.large" : "t3.micro"
+
+  # Conditional block
+  dynamic "root_block_device" {
+    for_each = var.environment == "prod" ? [1] : []
+    content {
+      encrypted = true
+    }
+  }
+}
+
+FOR:
+locals {
+  users = {
+    alice = { role = "admin", enabled = true }
+    bob   = { role = "user", enabled = false }
+    carol = { role = "admin", enabled = true }
+  }
+
+  # Create list of enabled admin users
+  active_admins = [
+    for name, user in local.users :
+    name
+    if user.role == "admin" && user.enabled
+  ]
+}
+
+output "active_admins" {
+  value = local.active_admins
+}
+
+
+
+COUNT:
+
+resource "aws_instance" "app" {
+  count         = 2
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t2.micro"
+
+  tags = {
+    Name = "app-server-${count.index}"
+  }
+}
+
+# Using splat to get all private IPs
+resource "aws_route53_record" "app" {
+  count   = 2
+  zone_id = aws_route53_zone.primary.zone_id
+  name    = "app-${count.index}.example.com"
+  type    = "A"
+  ttl     = 300
+  records = [aws_instance.app[count.index].private_ip]
+  
+  # Alternative using splat (if count matches)
+  # records = [aws_instance.app[*].private_ip[count.index]]
+}
+
+
+SPLAT:
+resource "aws_instance" "web" {
+  count         = 3
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t3.micro"
+
+  tags = {
+    Name = "web-server-${count.index}"
+  }
+}
+
+# Using splat to get all instance IDs
+output "all_instance_ids" {
+  value = aws_instance.web[*].id
+}
+
+# This is equivalent to:
+output "all_instance_ids_long_form" {
+  value = [for instance in aws_instance.web : instance.id]
+}
+
+DINAMIC BLOCKS:
+variable "security_group_rules" {
+  type = list(object({
+    port        = number
+    protocol    = string
+    cidr_blocks = list(string)
+    description = string
+  }))
+  default = [
+    {
+      port        = 80
+     protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "Allow HTTP access"
+    },
+    {
+      port        = 443
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "Allow HTTPS access"
+    }
+  ]
+}
+
+resource "aws_security_group" "web" {
+  name        = "web-sg"
+  description = "Security group for web servers"
+  vpc_id      = aws_vpc.main.id
+
+  dynamic "ingress" {
+    for_each = var.security_group_rules
+    content {
+      from_port   = ingress.value.port
+      to_port     = ingress.value.port
+      protocol    = ingress.value.protocol
+      cidr_blocks = ingress.value.cidr_blocks
+      description = ingress.value.description
+    }
+  }
+}

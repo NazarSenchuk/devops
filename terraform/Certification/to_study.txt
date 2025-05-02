@@ -1,0 +1,126 @@
+taint:
+Use the terraform taint command when objects become degraded or damaged. 
+Terraform prompts you to replace the tainted objects in the next plan
+ you create.
+Function deprecated 
+Use apply -replace 
+example: kubectl apply -replace="aws_instance.example[0]"
+-----------------------------------------------
+
+provisioners:
+Provisioners are used to execute scripts or commands on a local machine or a remote resource (e.g., an EC2 instance)
+ after creation or destruction.
+They are typically used for bootstrapping, configuration management, or ad-hoc tasks.
+examples:
+
+-----------------------------------------------
+
+
+debuging:
+Use enviroment variable TF_LOG
+-----------------------------------------------
+
+
+terraform cloud , registries:
+
+-----------------------------------------------
+
+types
+correct indetetion - 2 spaces not tab
+
+-----------------------------------------------
+
+lifecycle:
+create_before_destroy  -  resource will creates only if old one is destroyed
+prevent_destroy    -  prevent deletetion of resource (usefull for critical resources like databases)
+ignore_changes = [tags, ami]   -  resource will not change atributes that you define here
+
+replace_triggered_by - her you can define triger(another resource) , if triger have update , resourve will be replaced
+example:
+
+resource "aws_launch_template" "example" {
+  name_prefix = "example-"
+  # ... other config ...
+}
+
+resource "aws_autoscaling_group" "example" {
+  launch_template {
+    id      = aws_launch_template.example.id
+    version = "$Latest"
+  }
+  # ... other ASG config ...
+
+  lifecycle {
+    replace_triggered_by = [
+      aws_launch_template.example.id  # Force ASG replacement when launch template is replaced
+    ]
+  }
+}
+-----------------------------------------------
+terraform fmt - Formats the configuration files to a canonical format
+-----------------------------------------------
+terraform show - provides human readable output from a state or plan file 
+you can use -json
+-----------------------------------------------
+terrafrom.tfignore  - place where you can define files that you dont need
+to upload to Terraform cloud
+-----------------------------------------------
+terraform state show - show the current state of resources
+-----------------------------------------------
+ephemeral - for sensitive variables
+this variables will not placed in state files
+
+variable "session_token" {
+  type      = string
+  ephemeral = true
+}
+----------------------------------------------
+terraform state mv -  for renaming resource and moving to modules
+----------------------------------------------
+terraform_remote_state  data source  uses to get some options from another
+infrustructure 
+
+remote:
+data "terraform_remote_state" "vpc" {
+  backend = "remote"
+
+  config = {
+    organization = "hashicorp"
+    workspaces = {
+      name = "vpc-prod"
+    }
+  }
+}
+
+resource "aws_instance" "foo" {
+  subnet_id = data.terraform_remote_state.vpc.outputs.subnet_id
+}
+
+local:
+data "terraform_remote_state" "vpc" {
+  backend = "local"
+
+  config = {
+    path = "..."
+  }
+}
+
+resource "aws_instance" "foo" {
+  subnet_id = data.terraform_remote_state.vpc.outputs.subnet_id
+}
+
+-------------------------------------------------
+State locking in Terraform is primarily designed to protect the state file 
+during operations that modify infrastructure 
+it defends from multiple writers  in same time
+but you can unlock if you need by -force-unlock
+-------------------------------------------------
+timeouts allow you to customize how long certain operations allowed to 
+proccess
+for example: 
+resource{
+  timeouts {
+    create = "10m"
+  }	
+}
+if instance creates more than 10 m you will have error

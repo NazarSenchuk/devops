@@ -1,0 +1,13 @@
+## Memcached configuration
+## ref: https://github.com/bitnami/containers/tree/main/bitnami/memcached#configuration
+##
+memcached:
+  ## Memcached max connection limit
+  ##
+  maxConnections: 1024
+  ## Memcached item memory in megabytes (max item memory)
+  ##
+  maxItemMemory: 5
+  ## Memcached memory in megabytes
+  ##
+  memoryLimit: 1024

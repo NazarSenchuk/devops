@@ -1,0 +1,11 @@
+1. Deploy Prometheus  (configure where you wanna to get labels by labels and anotations) 
+
+2. Deploy servicemonitor (configure what service you want to monitor , port , path  ) 
+
+3. Deploy Prometheus adaptor(configure how metrics will be sent to custom metrics api )
+
+4. Deploy app (deploying nginx deployment with nginx exporter side car , services , config map and hpa)
+
+
+
+pipeline:  nginx -> nginx-exporter ->  prometheus -> prometheus-adaptor -> kubernetes custom metric api

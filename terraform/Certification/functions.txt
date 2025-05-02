@@ -1,0 +1,164 @@
+1. String Manipulation Functions
+join(delimiter, list)
+
+join(", ", ["a", "b", "c"]) # "a, b, c"
+
+split(delimiter, string)
+
+split(", ", "a, b, c") # ["a", "b", "c"]
+
+substr(string, offset, length)
+
+substr("hello world", 0, 5) # "hello"
+
+format(format, args...)
+
+format("Hello, %s!", "World") # "Hello, World!"
+
+lower(string) / upper(string)
+
+lower("TEST") # "test"
+upper("test") # "TEST"
+
+trimspace(string)
+
+trimspace("  hello  ") # "hello"
+
+2. Collection Functions
+lookup(map, key, default)
+
+lookup({a=1, b=2}, "a", 0) # 1
+
+element(list, index)
+
+element(["a", "b", "c"], 1) # "b"
+
+length(collection)
+
+length(["a", "b"]) # 2
+
+concat(lists...)
+
+concat([1,2], [3,4]) # [1,2,3,4]
+
+merge(maps...)
+
+merge({a=1}, {b=2}) # {a=1, b=2}
+
+keys(map) / values(map)
+
+keys({a=1, b=2}) # ["a", "b"]
+values({a=1, b=2}) # [1, 2]
+
+3. Numeric Functions
+max(numbers...) / min(numbers...)
+
+max(5, 12, 9) # 12
+min(5, 12, 9) # 5
+
+ceil(number) / floor(number)
+
+ceil(5.1) # 6
+floor(5.9) # 5
+
+parseint(string, base)
+
+parseint("FF", 16) # 255
+
+4. Date/Time Functions
+timestamp()
+
+timestamp() # "2023-05-15T12:00:00Z"
+
+timeadd(time, duration)
+
+timeadd("2023-05-15T12:00:00Z", "24h") # Adds 24 hours
+
+formatdate(format, time)
+
+formatdate("DD MMM YYYY", "2023-05-15T00:00:00Z") # "15 May 2023"
+
+5. Type Conversion Functions
+tostring(value)
+
+tostring(42) # "42"
+
+tonumber(value)
+
+tonumber("42") # 42
+
+tobool(value)
+
+tobool("true") # true
+
+6. Filesystem Functions
+file(path)
+
+file("${path.module}/script.sh")
+
+fileexists(path)
+
+fileexists("${path.module}/script.sh") # true/false
+
+templatefile(path, vars)
+
+templatefile("${path.module}/template.tftpl", {name = "John"})
+
+7. Network Functions
+cidrhost(prefix, hostnum)
+
+cidrhost("10.0.0.0/8", 5) # "10.0.0.5"
+
+cidrnetmask(prefix)
+
+cidrnetmask("10.0.0.0/24") # "255.255.255.0"
+
+8. Advanced Functions
+try(exprs..., default)
+
+try(var.maybe_undefined, "default")
+
+can(expression)
+
+can(aws_instance.example.id) # true if exists
+
+for Expressions
+
+[for s in var.list : upper(s)]
+{for k,v in var.map : k => upper(v)}
+
+dynamic Blocks
+
+dynamic "ingress" {
+  for_each = var.ports
+  content {
+    from_port = ingress.value
+    to_port   = ingress.value
+  }
+}
+
+9. HCL-Specific Functions
+jsonencode(value)
+
+jsonencode({key = "value"}) # '{"key":"value"}'
+
+yamlencode(value)
+
+yamlencode({key = "value"}) # 'key: value\n'
+
+zipmap(keyslist, valueslist)
+
+zipmap(["a", "b"], [1, 2]) # {a=1, b=2}
+
+10. Cryptographic Functions
+base64encode(string)
+
+base64encode("hello") # "aGVsbG8="
+
+md5(string)
+
+md5("hello") # "5d41402abc4b2a76b9719d911017c592"
+
+sha256(string)
+
+sha256("hello") # "2cf24dba5fb0a30e..."

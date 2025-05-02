@@ -1,0 +1,18 @@
+https://www.youtube.com/watch?v=hsJ2qtwoWZw
+https://habr.com/ru/companies/vk/articles/484344/
+https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/
+https://gcore.com/learning/prometheus-metrics-based-autoscaling-in-kubernetes
+HPA: - incring number of pods when have load 
+minikube:
+minikube addons enable metrics-server
+
+custom metrics autoscaling:
+https://gcore.com/learning/prometheus-metrics-based-autoscaling-in-kubernetes
+https://www.youtube.com/watch?v=iodq-4srXA8&t=199s
+https://www.bigbinary.com/blog/prometheus-adapter
+
+VPA: increasing resources when have load(better for statefull apps)
+
+cloud autoscalers:
+Cluster Autoscaler 
+Karpenter

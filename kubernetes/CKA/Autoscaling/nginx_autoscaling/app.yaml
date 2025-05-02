@@ -1,0 +1,108 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  nginx_status.conf: |
+    server {
+      listen 8080;
+      location /nginx_status/ {
+        stub_status on;
+        allow 127.0.0.1;
+        allow 10.244.0.0/16;
+        deny all;
+      }
+    }
+    server {
+      listen 80;
+      location / {
+        return 200 "Hello world";
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+        - containerPort: 8080  # Add this for the status endpoint
+        volumeMounts:
+        - mountPath: /etc/nginx/conf.d
+          name: nginx-config
+
+      - name: nginx-exporter
+        image: nginx/nginx-prometheus-exporter:latest
+        args:
+          - "--nginx.scrape-uri=http://localhost:8080/nginx_status/"
+        ports:
+        - containerPort: 9113
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-exporter
+  labels:
+    app: nginx
+spec:
+  selector:
+    app: nginx
+  ports:
+  - name: metrics
+    port: 9113
+    targetPort: 9113
+---
+kind: HorizontalPodAutoscaler
+apiVersion: autoscaling/v2
+metadata:
+  name: http
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nginx
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  # use a "Pods" metric, which takes the average of the
+  # given metric across all pods controlled by the autoscaling target
+  - type: Pods
+    pods:
+      metric:
+        # use the metric that you used above: pods/http_requests
+        name: nginx_connections_handled
+      target:
+        # target 500 milli-requests per second,
+        # which is 1 request every two seconds
+        type: AverageValue
+        averageValue: 500m
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 80

@@ -1,0 +1,46 @@
+https://kubernetes.io/docs/concepts/security/pod-security-admission/
+Admission controllers are a critical security and governance feature in Kubernetes that intercept requests to the Kubernetes API server
+after authentication and authorization but before persistence.
+They act as gatekeepers that can validate, modify, or reject API requests.
+
+
+
+Admission types:
+
+Mode	Description
+enforce	Policy violations will cause the pod to be rejected.
+audit	Policy violations will trigger the addition of an audit annotation to the event recorded in the audit log, but are otherwise allowed.
+warn	Policy violations will trigger a user-facing warning, but are otherwise allowed.
+
+
+Examples:
+
+
+# The per-mode level label indicates which policy level to apply for the mode.
+#
+# MODE must be one of `enforce`, `audit`, or `warn`.
+# LEVEL must be one of `privileged`, `baseline`, or `restricted`.
+<ADMISSION>.kubernetes.io/<MODE>: <LEVEL>
+
+# Optional: per-mode version label that can be used to pin the policy to the
+# version that shipped with a given Kubernetes minor version (for example v1.32).
+#
+# MODE must be one of `enforce`, `audit`, or `warn`.
+# VERSION must be a valid Kubernetes minor version, or `latest`.
+<ADMISSION>.kubernetes.io/<MODE>-version: <VERSION>
+
+
+
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: my-app
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+
+All pods with securityContext that not allowed by restricted (https://kubernetes.io/docs/concepts/security/pod-security-standards/) policy will not be created
+
+
+

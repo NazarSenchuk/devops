@@ -1,0 +1,116 @@
+kubernetes:https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+
+Node-selector:
+
+label your node:
+kubectl label nodes <your-node-name> disktype=ssd
+
+define nodeSelector:
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  labels:
+    env: test
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    imagePullPolicy: IfNotPresent
+  nodeSelector:
+    disktype: ssd
+
+---------------------------------------------------------------------------------
+
+NodeName:
+
+define nodeName in pod
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  nodeName: foo-node # schedule pod to specific node
+  containers:
+  - name: nginx
+    image: nginx
+    imagePullPolicy: IfNotPresent
+-----------------------------------------------------------------------------------
+
+NodeAfinity:
+
+Node affinity is conceptually similar to nodeSelector, allowing you to constrain which nodes your Pod can be scheduled on based on node labels.
+ There are two types of node affinity:
+
+requiredDuringSchedulingIgnoredDuringExecution: The scheduler can't schedule the Pod unless the rule is met. This functions like nodeSelector, but with a more expressive syntax.
+preferredDuringSchedulingIgnoredDuringExecution: The scheduler tries to find a node that meets the rule. If a matching node is not available, the scheduler still schedules the Pod.
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: with-node-affinity
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: topology.kubernetes.io/zone
+            operator: In
+            values:
+            - antarctica-east1
+            - antarctica-west1
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        preference:
+          matchExpressions:
+          - key: another-node-label-key
+            operator: In
+            values:
+            - another-node-label-value
+  containers:
+  - name: with-node-affinity
+    image: registry.k8s.io/pause:3.8
+---------------------------------------------------------------------------------------------------------------
+
+Taints and tolerations
+
+Taints and tolerations are Kubernetes mechanisms that allow you to control which pods can be scheduled on which nodes.
+They work together to ensure pods aren't scheduled onto inappropriate nodes.
+It is like login and password for node
+
+Key properties of a taint:
+
+    Key: Identifier for the taint
+
+    Value: Optional value associated with the key
+
+    Effect: What happens to non-tolerating pods
+
+        NoSchedule: Pods won't be scheduled unless they tolerate the taint
+
+        PreferNoSchedule: Kubernetes will try to avoid scheduling non-tolerating pods
+
+        NoExecute: Evicts running pods that don't tolerate the taint (new in Kubernetes 1.6)
+
+example:
+kubectl taint nodes node1 key=value:NoSchedule <- it mean that pods cant to be patched to this node without toleration
+
+to patch:
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-tolerating
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+  tolerations:
+  - key: "app"
+    operator: "Equal"
+    value: "special"
+    effect: "NoSchedule"
+
+if we skip toleration pod will not be placed and have status Pending
+

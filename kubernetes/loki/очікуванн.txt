@@ -1,0 +1,7 @@
+-S3 for chunks , Filesystem for index
+-Retention policies
+-Caching
+-use snappy
+
+https://last9.io/blog/loki-s3-storage-guide/#key-caching-strategies-in-grafana-loki
+query-performance https://grafana.com/blog/2023/01/10/watch-5-tips-for-improving-grafana-loki-query-performance/

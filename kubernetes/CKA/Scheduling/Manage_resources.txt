@@ -1,0 +1,146 @@
+1. Limit Range
+
+    Purpose: Enforces default, min, and max resource constraints (CPU & memory) per container or pod within a namespace.
+
+    Scope: Applies to individual containers, pods, or PersistentVolumeClaims (PVCs).
+
+    Use Cases:
+
+Prevent pods from being created without resource requests/limits.
+
+Define default CPU/memory requests and limits if not specified.
+
+Restrict the maximum or minimum resources a pod/container can use.
+
+    Example:
+For CPU requests and limits
+
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: cpu-limit-range
+spec:
+  limits:
+  - default:
+      cpu: 500m
+    defaultRequest:
+      cpu: 200m
+    max:
+      cpu: "1"
+    min:
+      cpu: 100m
+    type: Container
+
+For memory
+
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: mem-limit-range
+spec:
+  limits:
+  - default:
+      memory: 512Mi
+    defaultRequest:
+      memory: 256Mi
+    type: Container
+
+
+EVERY POD WILL HAVE BY DEFAULT(only in namespace where created ranges):
+ Limits:
+      cpu:     500m
+      memory:  512Mi
+    Requests:
+      cpu:        200m
+      memory:     256Mi
+
+----------------------------------------------------------------------------------------------------
+
+
+2. Resource Quota
+
+    Purpose: Restricts the total aggregated resource consumption (CPU, memory, storage, objects) across all pods in a namespace.
+
+    Scope: Operates at the namespace level, limiting the sum of resources used by all pods.
+
+    Use Cases:
+
+        Prevent a single namespace from consuming all cluster resources.
+
+        Limit the number of pods, secrets, ConfigMaps, etc., in a namespace.
+
+    Example:
+ 
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: mem-cpu-quota
+spec:
+  hard:
+    requests.cpu: "2"
+    requests.memory: 2Gi
+    limits.cpu: "4"
+    limits.memory: 4Gi
+    pods: "10"
+    #persistentvolumeclaims: "1"
+    #services: "3"
+    #all api objects
+it mean limits:
+    The sum of CPU requests across all pods ≤ 2 cores.
+
+    The sum of memory requests ≤ 2GiB.
+
+    The sum of CPU limits ≤ 4 cores.
+
+    The sum of memory limits ≤ 4GiB.
+
+Second Example:
+Kuberenetes will observe pod's limits and requests separatly by priority classes
+
+apiVersion: v1
+kind: List
+items:
+- apiVersion: v1
+  kind: ResourceQuota
+  metadata:
+    name: pods-high
+  spec:
+    hard:
+      cpu: "1000"
+      memory: "200Gi"
+      pods: "10"
+    scopeSelector:
+      matchExpressions:
+      - operator: In
+        scopeName: PriorityClass
+        values: ["high"]
+- apiVersion: v1
+  kind: ResourceQuota
+  metadata:
+    name: pods-medium
+  spec:
+    hard:
+      cpu: "10"
+      memory: "20Gi"
+      pods: "10"
+    scopeSelector:
+      matchExpressions:
+      - operator: In
+        scopeName: PriorityClass
+        values: ["medium"]
+- apiVersion: v1
+  kind: ResourceQuota
+  metadata:
+    name: pods-low
+  spec:
+    hard:
+      cpu: "5"
+      memory: "10Gi"
+      pods: "10"
+    scopeSelector:
+      matchExpressions:
+      - operator: In
+        scopeName: PriorityClass
+        values: ["low"]
+

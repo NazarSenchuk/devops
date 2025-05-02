@@ -1,0 +1,23 @@
+load_avarage means how many proccesses in system waiting
+
+key takeways:
+
+if load avarage  less than  amount of cpu cores, system is not overloaded 
+
+
+
+    If load average = 1.0 on a single-core CPU:
+
+        The CPU is fully utilized (1 process running, 0 waiting).
+
+    If load average > 1.0:
+
+        Processes are waiting for CPU time (possible slowdown).
+
+    If load average < 1.0:
+
+        The CPU has idle time.
+
+Typically load avarage showed in consistency of 3 values:
+load average: 1.27, 2.06, 2.68
+this consistency means:  1, 5, and 15 minutes.

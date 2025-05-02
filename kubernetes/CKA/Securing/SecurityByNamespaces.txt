@@ -1,0 +1,86 @@
+https://kubernetes.io/docs/tasks/configure-pod-container/enforce-standards-namespace-labels/
+
+
+Kubernetes Pod Security Standards: Privileged, Baseline, Restricted
+
+Kubernetes Pod Security Standards define three different policies to restrict the behavior of pods in increasing levels of strictness:
+1. Privileged
+
+Unrestricted policy, provides the widest possible permission level:
+
+    Intended for system- and infrastructure-level workloads
+
+    Allows known privilege escalations
+
+    No restrictions - pods can do almost anything
+
+    Equivalent to running without a PodSecurityPolicy
+
+    Use case: Cluster administration pods or trusted workloads where security isn't a primary concern
+
+2. Baseline
+
+Minimally restrictive policy:
+
+    Prevents known privilege escalations
+
+    Balances security with compatibility for common containerized workloads
+
+    Restrictions include:
+
+        Prevent sharing host namespaces (PID, network, IPC)
+
+        Require non-root users (or must explicitly set runAsNonRoot: true)
+
+        Disallow privileged containers
+
+        Restrict Linux capabilities to a safe subset
+
+        Require the root filesystem to be read-only
+
+    Use case: General application workloads where some security is needed but flexibility is still required
+
+3. Restricted
+
+Highly restrictive policy:
+
+    Follows current Pod hardening best practices
+
+    Additional restrictions beyond Baseline:
+
+        Enforces running as non-root by default
+
+        Requires dropping all Linux capabilities
+
+        Mandates read-only root filesystem
+
+        Restricts volume types to only non-hostPath
+
+        Requires seccomp profile
+
+        Enforces stricter SELinux/AppArmor settings
+
+    Use case: Security-critical applications and multi-tenant environments where maximum isolation is required
+
+Implementation
+
+These standards can be enforced using:
+
+    Pod Security Admission (built-in in Kubernetes 1.23+)
+
+    Third-party admission controllers like OPA Gatekeeper
+
+    PodSecurityPolicy (deprecated in 1.21, removed in 1.25)
+
+Example of enforcing Restricted policy via labels:
+yaml
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: my-app
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+
+The standards help organizations implement consistent security policies across their clusters while allowing flexibility based on workload requirements.

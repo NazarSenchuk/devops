@@ -1,0 +1,2 @@
+https://github.com/BigKAA/youtube/blob/master/net/04-NetworkPolicies/README.md
+!!! Не блокуйте вихідний трафік до kubedns тому що всі dns імена не будуть відповідати

@@ -1,0 +1,90 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kubelet-cadvisor
+  namespace: monitoring
+  labels:
+    prometheus: main
+spec:
+  jobLabel: k8s-app
+  endpoints:
+  - port: https-metrics
+    scheme: https
+    path: /metrics/cadvisor
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    tlsConfig:
+      insecureSkipVerify: true
+  selector:
+    matchLabels:
+      k8s-app: kubelet
+  namespaceSelector:
+    matchNames:
+    - kube-system
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kubelet
+  namespace: monitoring
+  labels:
+    prometheus: main
+spec:
+  jobLabel: k8s-app
+  endpoints:
+  - port: https-metrics
+    scheme: https
+    path: /metrics/resource
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    tlsConfig:
+      insecureSkipVerify: true
+  selector:
+    matchLabels:
+      k8s-app: kubelet
+  namespaceSelector:
+    matchNames:
+    - kube-system
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kube-state-metrics
+  namespace: monitoring  # Must match where Prometheus Operator is installed
+  labels:
+    prometheus: main  # Matches Prometheus' serviceMonitorSelector
+spec:
+  jobLabel: app.kubernetes.io/name
+  endpoints:
+  - port: http  # Matches the Service's port name (default for kube-state-metrics)
+    interval: 30s
+    scheme: http        # Use 'https' if TLS is enabled
+    # If using HTTPS, add:
+    # tlsConfig:
+    #   insecureSkipVerify: true  # Only if certs are self-signed
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-state-metrics  # Matches the Service's labels
+
+  namespaceSelector:
+    matchNames:
+    - kube-system  # Where kube-state-metrics is installed
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kube-node-exporter
+  namespace: monitoring  # Must match where Prometheus Operator is installed
+  labels:
+    prometheus: main  # Matches Prometheus' serviceMonitorSelector
+spec:
+  jobLabel: app.kubernetes.io/name
+  endpoints:
+  - port: http  # Matches the Service's port name (default for kube-state-metrics)
+    interval: 30s
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: node-exporter
+  namespaceSelector:
+    matchNames:
+    - monitoring

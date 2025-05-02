@@ -1,0 +1,30 @@
+Kubeadm can init all cluster automaticlly doing this operations:
+    Generating certificates
+
+    Creating kubeconfig files
+
+    Bootstrapping the etcd cluster
+
+    Starting control plane components (API server, controller manager, scheduler)
+
+    Applying addons like CoreDNS and kube-proxy
+
+and can init by phases:
+for example:
+control-plane:
+kubeadm init phase control-plane --help
+
+initializing etcd:
+sudo kubeadm init phase etcd local
+
+also you can initialize cluster without some phase:
+sudo kubeadm init --skip-phases=control-plane,etcd --config=configfile.yaml
+
+to see list of phases that you need to init:
+kubeadm init --help
+
+alse when you join node to the cluster you join by phases:
+kubeadm join phase preflight <api-server-endpoint> --token <token> --discovery-token-ca-cert-hash <hash>
+
+# 2. Configure and start kubelet
+kubeadm join phase kubelet-start <api-server-endpoint> --token <token> --discovery-token-ca-cert-hash <hash>

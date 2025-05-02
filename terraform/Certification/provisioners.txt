@@ -1,0 +1,59 @@
+Provisioners - pass data into virtual machines and other compute resources
+
+Main provisioners:
+
+Connection: 
+Help provision to set up  connection with machine
+provisioner "file" {
+  source      = "conf/myapp.conf"
+  destination = "/etc/myapp.conf"
+
+  connection {
+    type     = "ssh"
+    user     = "root"
+    password = var.root_password
+    host     = var.host
+  }
+}
+
+Cloud Init:
+It make image of mashine and convert it into user-data
+
+
+Local Exec:
+local-exec provisioner to run the CLI for your target system in order to create, update, 
+or otherwise interact with remote objects in that system.
+
+resource "aws_instance" "web" {
+  provisioner "local-exec" {
+    #when    = destroy - you can define when you can run your provisioner
+    #on_failure = continue/fail - you can define what to do when provisioner failed
+    #working_dir  - where command will be executed
+    #interpreter  - what will run this command 
+    #enviroment  - enviroment variables you wanna to set 
+    command = "echo The server's IP address is ${self.private_ip}"
+  }
+}
+will create file on local_machine with private ip
+
+
+Remote Exec
+remote exec provisioner run cli command on machine where you define this provisioner
+
+resource "aws_instance" "web" {
+  provisioner "remote-exec" {
+    scripts = [
+      "./setup-users.sh",
+      "/home/andrew/Desktop/bootstrap"
+    ]  
+  }
+}
+
+
+
+File
+
+provisioner "file" {
+    source = "apps/app1/"
+    destination = "D:/iis/webapp1"
+  }

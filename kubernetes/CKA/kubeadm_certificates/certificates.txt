@@ -1,0 +1,48 @@
+https://github.com/BigKAA/youtube/blob/master/kubeadm/certificates.md
+https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-token/
+
+!! відновлення окремо сертифікатів etcd , apiserver, proxy
+https://habr.com/ru/companies/aenix/articles/541118/
+
+
+https://www.juniper.net/documentation/us/en/software/paragon-automation23.2/paragon-automation-troubleshooting-guide/topics/task/tg-manual-renew-kubeadm-cert.html
+
+
+    Набор сертификатов и CA для etcd (в /etc/kubernetes/pki/etcd);
+
+    Набор сертификатов и CA для Kubernetes (в /etc/kubernetes/pki);
+
+    Kubeconfig для cluster-admin, kube-controller-manager, kube-scheduler и kubelet (каждый из них также имеет закодированный в base64 CA-сертификат для нашего кластера /etc/kubernetes/*.conf);
+
+    Набор статик-манифестов для etcd, kube-apiserver, kube-scheduler и kube-controller-manager (в /etc/kubernetes/manifests).
+
+
+
+
+
+main commands:
+
+kubeadm certs check-expiration
+kubeadm renew all
+
+etcd:
+sudo kubeadm certs renew etcd-server   
+sudo kubeadm certs renew etcd-peer       
+sudo kubeadm certs renew etcd-healthcheck-client
+
+
+token:
+kubeadm token generate 
+
+kubeadm token create (token generated) --printf-join-command
+
+
+
+
+Using custom certificates when you init cluster
+
+By default, kubeadm generates all the certificates needed for a cluster to run. You can override this behavior by providing your own certificates.
+
+To do so, you must place them in whatever directory is specified by the --cert-dir flag or the certificatesDir field of kubeadm's ClusterConfiguration. By default this is /etc/kubernetes/pki.
+
+If a given certificate and private key pair exists before running kubeadm init, kubeadm does not overwrite them. This means you can, for example, copy an existing CA into /etc/kubernetes/pki/ca.crt and /etc/kubernetes/pki/ca.key, and kubeadm will use this CA for signing the rest of the certificates.

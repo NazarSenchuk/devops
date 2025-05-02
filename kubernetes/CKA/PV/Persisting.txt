@@ -1,0 +1,155 @@
+PERSISTING:
+
+Persisting Volume - is mostly  work of kubernetes administrator , that must provide volumes for devops enginers.
+Administrator  must  describe volume and features
+
+example:
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: test-local
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 2Gi
+  local:
+    path: /opt/local-pv
+  storageClassName: "default"
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          # - node2.kryukov.local
+          - node3.kryukov.local
+  persistentVolumeReclaimPolicy: Retain
+  
+ 
+--------------------------------------------------------------------------------------------------------------------
+access modes:
+    ReadWriteOnce (RWO)
+
+        Can be mounted as read-write by a single node
+
+        Only one pod can use the volume at a time (even if multiple pods are on the same node)
+
+        Example: AWS EBS, GCP Persistent Disk
+
+    ReadOnlyMany (ROX)
+
+        Can be mounted read-only by many nodes
+
+        Multiple pods can read simultaneously, but none can write
+
+        Rarely used in practice
+
+    ReadWriteMany (RWX)
+
+        Can be mounted as read-write by many nodes
+
+        Multiple pods can read and write simultaneously
+
+        Example: NFS, CephFS, Azure Files
+--------------------------------------------------------------------------------------------------------------------
+local.path vs hostPath:
+For persisting better use  localpath, with  node afinity you can chose node that more suitable for persisting(with big ssd storage)
+Host path also persisting on node but kubernetes chose node for app randomly and this node can be very bad for persisting.
+
+--------------------------------------------------------------------------------------------------------------------
+Retain vs Delete policy:
+Delete policy after deleting pvc deleting pv ( but some storage provisioners don't allow do it and status will be FAILED)
+Retain saving pv after deleting pvc  and you must delete volume manualy	
+--------------------------------------------------------------------------------------------------------------------
+
+Persistent Volume Claim - more for devops that request memory for stateful apps, administrator must provide you volumes,
+in same you must make good persistent volume claim request
+
+
+
+
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: claim-local-pvc
+  namespace: volumes-sample
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: "default"
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: test-local
+  
+ -------------------------------------------------------------------------------------------------------------------
+ Dinamic provision:
+ 
+When you use dinamic provision you don't need  create PV , you need only  create PVC ,provisioner selfly make PV 
+for you volume claim request
+
+for that you need to create storage class and describe your provisioner:
+
+aws:
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ebs-sc  # Name of your StorageClass
+provisioner: ebs.csi.aws.com  # AWS EBS CSI driver
+volumeBindingMode: WaitForFirstConsumer  # Critical for EBS!
+parameters:
+  type: gp3  # Volume type (gp3, io1, io2, st1, sc1)
+  encrypted: "true"  # Enable encryption by default
+reclaimPolicy: Delete  # Or 'Retain' if you want to keep volumes after PVC deletion
+allowVolumeExpansion: true  # Allow resizing the volume later
+
+and pvc for request pv
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ebs-claim
+spec:
+  accessModes:
+    - ReadWriteOnce  # EBS volumes are RWO by default
+  storageClassName: ebs-sc  # Matches the StorageClass name
+  resources:
+    requests:
+      storage: 10Gi  # Size of the EBS volume
+
+
+----------------------------------------------------------------------------------------------------------
+
+if you have already storage on aws and you don't need create new , you must create pv with storageClassName: manual
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: aws-manual-pv  # Name of the PV
+spec:
+  storageClassName: manual  # StorageClass name (optional, but useful for PVC binding)
+  capacity:
+    storage: 5Gi  # Must match the actual EBS volume size
+  accessModes:
+    - ReadWriteOnce  # EBS only supports ReadWriteOnce (RWO)
+  persistentVolumeReclaimPolicy: Retain  # Recommended for manual PVs (or "Delete")
+  awsElasticBlockStore:
+    volumeID: vol-0123456789abcdef0  # Replace with your existing EBS volume ID
+    fsType: ext4  # File system type (ext4, xfs, etc.)
+ 
+and pvc
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: aws-manual-pvc
+spec:
+  storageClassName: manual  # Must match PV's storageClassName
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi  # Must match PV's capacity

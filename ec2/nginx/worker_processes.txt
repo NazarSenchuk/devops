@@ -1,0 +1,11 @@
+The worker processes setting in Nginx is a crucial performance parameter that determines how many worker processes Nginx will spawn to handle incoming requests.
+
+worker_processes: auto - nginx will automaticly set number of worker processes equal to number of CPU cores available
+
+optimal setting here number of cpu cores (check with nproc or lscpu in Linux)
+
+but if you have cpu intensive workloads like ssl/tls processing you can set 1.5-2x number of cores
+
+in kubernetes containers  when you set request and limits 
+worker_processes:auto is not good because nginx will chose number of 
+cores setted in  request/limits not in you node so better set it manually

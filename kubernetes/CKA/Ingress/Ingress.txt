@@ -1,0 +1,5 @@
+redirect with annotaions:https://habr.com/ru/articles/584958/
+nginx-ingress: https://kubernetes.github.io/ingress-nginx/deploy/
+need to know aws:https://kubernetes.github.io/ingress-nginx/deploy/#aws
+
+https://habr.com/ru/companies/slurm/articles/340238/

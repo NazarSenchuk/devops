@@ -1,0 +1,28 @@
+Useful top Commands (Interactive Mode)
+
+While top is running, press these keys to control it:
+Key	Action
+q	Quit top
+h	Help (list all commands)
+Space	Refresh immediately
+k	Kill a process (enter PID)
+r	Renice a process (change priority)
+P	Sort by CPU usage (default)
+M	Sort by memory usage
+T	Sort by running time
+N	Sort by PID
+u	Show processes for a specific user
+c	Toggle command line vs. program name
+1	Show individual CPU cores
+Shift + F	Customize displayed columns
+Shift + W	Save current settings
+Command-Line Options
+
+You can also control top when launching it:
+Command	Description
+top -d 2	Update delay (2 seconds)
+top -p PID	Monitor a specific process
+top -u username	Show processes of a user
+top -n 3	Update 3 times and exit
+top -b	Batch mode (for scripting)
+top -H	Show threads (with -p for a process)

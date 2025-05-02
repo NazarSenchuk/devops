@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pod-resource-recording-rules
+  namespace: monitoring
+  labels:
+    prometheus: main
+spec:
+  groups:
+  - name: pod-resources
+    rules:
+    - record: pod:container_cpu_usage:rate5m
+      expr: rate(container_cpu_usage_seconds_total{container!="POD",container!=""}[5m])
+    - record: pod:container_memory_usage_bytes:sum
+      expr: container_memory_working_setbytes{container!="POD",container!=""}
+    - record: pod:cpu_usage:percent
+      expr: sum(rate(container_cpu_usage_seconds_total{container!="POD",container!=""}[5m])) by (pod, namespace) * 100

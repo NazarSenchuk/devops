@@ -1,0 +1,12 @@
+How work scheduler (very good tutorial:
+https://habr.com/ru/companies/otus/articles/761186/
+
+Multiple scheduler:
+https://www.youtube.com/watch?v=WbWj-4lT434
+
+Display scheduler events:
+$ kubectl get events
+$ kubectl get events --watch
+$ kubectl logs kube-scheduler-bk8s-node0 -n kube-system
+
+/var/log/kube-scheduler.log on the control/master node (if schedule is standalone service)

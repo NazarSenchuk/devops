@@ -34,7 +34,7 @@ serviceAccount:
   create: true
   annotations: {}
   name:
-
+    fluent-bit
 rbac:
   create: true
   nodeAccess: true
@@ -398,15 +398,14 @@ config:
   inputs: |
     [INPUT]
         Name tail
-        Path /var/log/containers/*.log
-        multiline.parser docker, cri
+        Path /var/log/containers/kube*.log , /var/log/containers/etcd* , /var/log/containers/fluentbit*
+        Parser docker
         Tag kube.*
         DB     /var/log/flb_kube.db
-        Mem_Buf_Limit 5MB
+        Mem_Buf_Limit 10MB
         Skip_Long_Lines On
         Refresh_Interval  5  # Перевіряти нові файли кожні 5 секунд        
-        Rotate_Wait       5 
-  
+        Rotate_Wait       5
     [INPUT]
         Name systemd
         Tag host.*
@@ -419,12 +418,58 @@ config:
         tag    nginx.access
         path   /var/log/nginx/access*
         Read_from_Head on
-  
 
     [INPUT]
         name   tail
+        tag    nginx.error
+        path   /var/log/nginx/error*
+        Read_from_Head on
   ## https://docs.fluentbit.io/manual/pipeline/filters
   filters: |
+    [FILTER]
+        Name kubernetes
+        Match kube.*
+        Merge_Log On
+        Merge_Log_Trim On
+        Labels Off
+        Annotations Off
+        K8S-Logging.Parser Off
+        K8S-Logging.Exclude Off
+    [FILTER]
+        Name modify
+        Match kube.*
+        Rename log content
+    [FILTER]
+        Name nest
+        Match kube.*
+        Operation lift
+        Nested_under kubernetes
+        Add_prefix   kubernetes_
+    [FILTER]
+        Name modify
+        Match kube.*
+        Rename log content
+        Rename kubernetes_pod_name pod
+        Rename kubernetes_namespace_name namespace
+        Remove kubernetes_container_image
+        Remove kubernetes_docker_id
+        Remove kubernetes_container_name
+        Remove kubernetes_pod_id
+        Remove kubernetes_host
+        Remove time
+        Remove timestamp
+        Remove kubernetes_container_hash
+    
+        
+    [FILTER]
+        Name        parser
+        Match       kube.*
+        Key_Name    content
+        Parser      content_parser
+        Reserve_Data true    
+        
+        
+        
     [FILTER]
         Name parser
         Match nginx.error
@@ -437,74 +482,82 @@ config:
         Match nginx.access
         Key_Name log
         Parser nginx_access
-    
 
     [FILTER]
         Name modify
         Match nginx.access
         Remove referer
         Set  level access
-        Remove host 
+        Remove host
         Remove from
         Remove user
+
 
     [FILTER]
         Name modify
         Match nginx.error
         Set  level error
+        Remove request_id
         Remove pid
         Remove tid
         Remove date
 
 
-
   ## https://docs.fluentbit.io/manual/pipeline/outputs
   outputs: |
+    [OUTPUT]
+        name loki
+        Match nginx.error
+        Host loki-gateway
+        Port 80
+
+        labels job=nginx, message=$message,server=$server, client=$client , method=$method,path=$path , level=$level
+        label_keys  $message, $method, $path, $level, $client , $server
+        line_format json
+        Tenant_ID       fake-tenant
 
     [OUTPUT]
         name loki
         Match nginx.access
-        Host loki-gateway 
+        Host loki-gateway
         Port 80
-        labels job=nginx, method=$method, path=$path, code=$code , level=$level
-        label_keys   $method, $level, $path, $code
+
+        labels job=nginx,client_ip=$client_ip, method=$method,path=$path,code=$code,size=$size,agent=$agent ,level=$level
+        label_keys  $client_ip,$method,$path,$code,$size,$level,$agent
         line_format json
         Tenant_ID       fake-tenant
 
-    [OUTPUT]
-        name loki
-        Match nginx.error
-        
-        Host loki-gateway 
-        Port 80
-
-        labels job=nginx,request_id=$request_id, message=$message, method=$method,path=$path , level=$level
-        label_keys  $request_id, $message, $method, $path, $level
-        line_format json
-        Tenant_ID       fake-tenant
     [OUTPUT]
         name loki
         Match kube.*
-        Host loki-gateway 
+        Host loki-gateway
         Port 80
-	labels job=kubernetes
-        Auto_Kubernetes_Labels off        
+        
+        labels job=kubernetes, stream=$stream, pod=$pod , namespace=$namespace
+        label_keys  $stream,$namespace , $pod
         line_format json
         Tenant_ID       fake-tenant
     [OUTPUT]
         name loki
         Match host.*
-        Host loki-gateway 
+        Host loki-gateway
         Port 80
-        labels job=systemd                   
+        labels job=systemd
         line_format json
         Tenant_ID       fake-tenant
+
   ## https://docs.fluentbit.io/manual/administration/configuring-fluent-bit/classic-mode/upstream-servers
   ## This configuration is deprecated, please use `extraFiles` instead.
   upstream: {}
 
   ## https://docs.fluentbit.io/manual/pipeline/parsers
   customParsers: |
+    [PARSER]
+        Name        content_parser
+        Format      regex
+        Regex       ^(?<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+(?<stream>\w+)\s+F\s+(?<message>.*)$
+        Time_Key    timestamp
+        Time_Format %Y-%m-%dT%H:%M:%S.%LZ
     [PARSER]
         Name docker_no_time
         Format json
@@ -515,7 +568,7 @@ config:
     [PARSER]
         Name   nginx_access
         Format regex
-        Regex ^(?<remote>[^ ]*) (?<host>[^ ]*) (?<user>[^ ]*) \[(?<time>[^\]]*)\] "(?<method>\S+)(?: +(?<path>[^\"]*?)(?: +\S*)?)?" (?<code>[^ ]*) (?<size>[^ ]*)(?: "(?<from>[^\"]*)" "(?<agent>[^\"]*)")
+        Regex ^(?<client_ip>[^ ]*) (?<host>[^ ]*) (?<user>[^ ]*) \[(?<time>[^\]]*)\] "(?<method>\S+)(?: +(?<path>[^\"]*?)(?: +\S*)?)?" (?<code>[^ ]*) (?<size>[^ ]*)(?: "(?<from>[^\"]*)" "(?<agent>[^\"]*)")
         Time_Key time
         Time_Format %d/%b/%Y:%H:%M:%S %z
 
