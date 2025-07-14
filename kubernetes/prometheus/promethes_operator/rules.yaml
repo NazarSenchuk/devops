@@ -7,11 +7,45 @@ metadata:
     prometheus: main
 spec:
   groups:
-  - name: pod-resources
+  - name: cpu
     rules:
-    - record: pod:container_cpu_usage:rate5m
-      expr: rate(container_cpu_usage_seconds_total{container!="POD",container!=""}[5m])
-    - record: pod:container_memory_usage_bytes:sum
-      expr: container_memory_working_setbytes{container!="POD",container!=""}
-    - record: pod:cpu_usage:percent
-      expr: sum(rate(container_cpu_usage_seconds_total{container!="POD",container!=""}[5m])) by (pod, namespace) * 100
+    - record: container_cpu_usage
+      expr: sum(rate(container_cpu_usage_seconds_total{container != ""}[1m])) by (container)
+
+    - record: pod_cpu_usage
+      expr: sum(rate(container_cpu_usage_seconds_total{pod != ""}[1m])) by (pod)
+
+    - record: node_cpu_usage_of_kubernetes
+      expr: sum(rate(container_cpu_usage_seconds_total{id="/"}[1m])) by (node) / sum(machine_cpu_cores) by (node) * 100
+
+    - record: node_cpu_usage
+      expr: 100 - (avg by (node) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+
+    - record: deployments_cpu_usage
+      expr: |-
+        avg by (deployment) (
+          label_replace(
+            rate(container_cpu_usage_seconds_total{ container!="", container!="POD"}[5m]),
+            "deployment", "$1", "pod", "(.*?)-[^-]+-[^-]+$"
+          )
+        )
+
+    - record: deployments_cpu_usage_limits
+      expr: |-
+        avg by (deployment) (
+          label_replace(
+            kube_pod_container_resource_limits{resource="cpu", unit="core"},
+            "deployment", "$1", "exported_pod", "(.*?)-[^-]+-[^-]+$"
+          )
+        )
+
+    - record: deployments_cpu_usage_percentage
+      expr: (deployments_cpu_usage / deployments_cpu_usage_limits) * 100
+
+    - alert: HighCpuUsage
+      expr: deployments_cpu_usage_percentage{deployment = "nginx"} > 70
+      for: 10m
+      labels:
+        severity: critical
+      annotations:
+        summary: High CPU usage

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kube-observability.fluentbit.fullname" . }}-config
+  namespace: {{ .Values.fluentbit.namespace }}
+  labels:
+    {{- include "kube-observability.fluentbit.labels" . | nindent 4 }}
+data:
+  custom_parsers.conf: |
+    {{- .Values.fluentbit.parsers | nindent 4 }}
+  fluent-bit.conf: |
+    {{- .Values.fluentbit.service | nindent 4 }}
+    {{- .Values.fluentbit.inputs | nindent 4 }}
+    {{- .Values.fluentbit.filters | nindent 4 }}
+    {{- .Values.fluentbit.outputs | nindent 4 }}

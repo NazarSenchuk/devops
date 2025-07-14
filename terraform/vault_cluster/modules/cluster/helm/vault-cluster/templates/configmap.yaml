@@ -1,0 +1,91 @@
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "vault-cluster.fullname" . }}-leader-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "vault-cluster.labels" . | nindent 4 }}
+data:
+  vault_leader.hcl: |
+    storage "raft" {
+      path    = "/vault/data/"
+      node_id = "vault_leader"
+    }
+
+    listener "tcp" {
+      address          = "0.0.0.0:8200"
+      cluster_address = "0.0.0.0:8201"
+      {{ if  .Values.tls.enabled }}
+      tls_disable      = false
+      tls_cert_file = "/vault/tls/tls.crt"
+      tls_key_file  = "/vault/tls/tls.key"
+      {{ else }}
+      tls_disable      = true
+      {{ end }}
+    }
+    {{ if  .Values.aws.enabled }}
+    seal "awskms" {
+      region     = "{{ .Values.aws.region }}"
+      kms_key_id = "{{ .Values.aws.kms_key_id }}"
+    }
+    {{ end }}
+    disable_mlock = true
+    cluster_name            = "{{ .Values.cluster_name }}"
+    cluster_addr  = {{ if .Values.tls.enabled }} "https://vault-leader.vault.svc.cluster.local:8201" {{else}} "http://vault-leader.vault.svc.cluster.local:8201" {{ end }}
+    api_addr      = {{ if .Values.tls.enabled }} "https://vault-leader.vault.svc.cluster.local:8200" {{else}} "http://vault-leader.vault.svc.cluster.local:8200" {{ end }}
+
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "vault-cluster.fullname" . }}-followers-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "vault-cluster.labels" . | nindent 4 }}
+data:
+{{- range $index, $follower := until (.Values.followers | int) }}
+  vault-follower{{ add $index 1 }}.hcl: |
+    storage "raft" {
+      path    = "/vault/data/"
+      node_id = "vault_follower{{ add $index 1 }}"
+      retry_join {
+        leader_client_cert_file = "/vault/tls/tls.crt"
+        leader_client_key_file = "/vault/tls/tls.key"
+        leader_api_addr = {{ if $.Values.tls.enabled  }} "https://vault-leader.vault.svc.cluster.local:8200" {{ else }} "http://vault-leader.vault.svc.cluster.local:8200" {{ end }}
+      }
+      {{- range $followerIndex, $follower := until ( $.Values.followers | int) }}
+      {{- if ne (add $followerIndex 1) (add $index 1) }}
+      retry_join {
+        leader_api_addr = {{ if $.Values.tls.enabled }} "https://vault-follower{{ add $followerIndex 1 }}.vault.svc.cluster.local:8200" {{ else }} "http://vault-follower{{ add $followerIndex 1 }}.vault.svc.cluster.local:8200" {{ end }}
+      }
+      {{- end }}
+      {{- end }}
+    }
+
+    listener "tcp" {
+      address = "0.0.0.0:8200"
+      cluster_address = "0.0.0.0:8201"
+      {{ if $.Values.tls.enabled }}
+      tls_disable      = false
+      tls_cert_file = "/vault/tls/tls.crt"
+      tls_key_file  = "/vault/tls/tls.key"
+      {{ else }}
+      tls_disable      = true
+      {{ end }}
+    }
+
+    {{ if  $.Values.aws.enabled }}
+    seal "awskms" {
+      region     = "{{ $.Values.aws.region }}"
+      kms_key_id = "{{ $.Values.aws.kms_key_id }}"
+    }
+    {{ end }}
+
+    cluster_name = "{{ $.Values.cluster_name }}"
+    disable_mlock = true
+    api_addr  = {{ if $.Values.tls.enabled }} "https://vault-follower{{ add $index 1 }}.vault.svc.cluster.local:8200" {{ else }}  "http://vault-follower{{ add $index 1 }}.vault.svc.cluster.local:8200" {{ end }}
+    cluster_addr = {{ if $.Values.tls.enabled }} "https://vault-follower{{ add $index 1 }}.vault.svc.cluster.local:8201" {{ else }} "http://vault-follower{{ add $index 1 }}.vault.svc.cluster.local:8201" {{ end }}
+{{- end }}

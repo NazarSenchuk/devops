@@ -1,0 +1,378 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "vault-cluster.fullname" . }}-leader
+  namespace: {{ .Values.namespace }}
+  labels:
+    service: leader
+    {{- include "vault-cluster.labels" . | nindent 4 }}
+
+spec:
+  selector:
+    matchLabels:
+      service: leader
+      {{- include "vault-cluster.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        service: leader
+        {{- include "vault-cluster.labels" . | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 10
+      serviceAccountName: vault
+      securityContext:
+        runAsNonRoot: true
+        runAsGroup: 1000
+        runAsUser: 100
+        fsGroup: 1000
+      hostNetwork: false
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "vault-cluster.fullname" . }}-leader-config
+        - name: init
+          emptyDir: {}
+
+
+        {{ if .Values.tls.enabled }}
+        - name: tls-secret-volume
+          secret:
+            secretName: {{ .Values.tls.secret}}
+            items:
+              - key: {{ .Values.tls.ca_cert }}
+                path: tls.crt
+              - key: {{ .Values.tls.ca_key}}
+                path: tls.key
+        {{ end }}
+      containers:
+        - name: vault
+          image: hashicorp/vault:1.19.0
+          imagePullPolicy: IfNotPresent
+          command:
+          - "/bin/sh"
+          - "-ec"
+          args: 
+          - |
+            vault server -config=/vault/config/vault_leader.hcl
+          securityContext:
+            allowPrivilegeEscalation: false
+
+          resources:
+            requests:
+              memory: "100Mi"
+              cpu: "100m"
+            limits:
+              memory: "300Mi"
+              cpu: "300m"
+          env:
+            - name: VAULT_ADDR
+              value: {{ if  .Values.tls.enabled }} "https://127.0.0.1:8200" {{ else }} "http://127.0.0.1:8200"   {{ end }}
+            {{ if .Values.tls.enabled }}
+            - name: VAULT_CACERT
+              value: "/vault/tls/tls.crt"
+            {{ end }}
+            {{ if .Values.aws.enabled }}
+            - name: AWS_ACCESS_KEY_ID
+              value: "{{ .Values.aws.aws_access_key }}"
+            - name: AWS_SECRET_ACCESS_KEY
+              value: "{{ .Values.aws.aws_secret_key }}"
+            {{ end }}
+            - name: HOME
+              value: "/home/vault"
+          volumeMounts:
+            - name: data
+              mountPath: /vault/data
+            - name: config
+              mountPath: /vault/config
+            - name: init
+              mountPath: /vault/init
+            {{ if .Values.tls.enabled }}
+            - name: tls-secret-volume
+              mountPath: /vault/tls
+              readOnly: true
+            {{ end }}
+
+          ports:
+            - containerPort: 8200
+              name: http
+            - containerPort: 8201
+              name: http-cluster
+          readinessProbe:
+            httpGet:
+              path: /v1/sys/health
+              port: 8200
+            initialDelaySeconds: 20
+            periodSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 20
+            periodSeconds: 4
+          lifecycle:
+            # Vault container doesn't receive SIGTERM from Kubernetes
+            # and after the grace period ends, Kube sends SIGKILL.  This
+            # causes issues with graceful shutdowns such as deregistering itself
+            # from Consul (zombie services).
+            preStop:
+              exec:
+                command:
+                - "/bin/sh"
+                - "-c"
+                # Adding a sleep here to give the pod eviction a
+                # chance to propagate, so requests will not be made
+                # to this pod while it's terminating
+                - "sleep 5 && kill -SIGTERM $(pidof vault)"
+      initContainers:
+        - name: vault-init
+          image: hashicorp/vault:1.19.0
+          restartPolicy: Always
+          command: ["/bin/sh", "-c" ]
+          args:
+          - |
+            while true; do
+              sleep 5
+              if vault status 2>/dev/null | grep -q "Initialized.*false"; then
+                echo "Initializing Vault..."
+
+                if vault operator init -format=json > /vault/data/init_key.json; then
+                  echo "Vault initialized successfully"
+
+                else
+                  echo "Failed to initialize Vault! Retrying in 10 seconds..."
+                  sleep 10
+                fi
+              fi
+            done
+
+          resources:
+            requests:
+              memory: "10Mi"
+              cpu: "10m"
+            limits:
+              memory: "30Mi"
+              cpu: "30m"
+          volumeMounts:
+            - name: data
+              mountPath: /vault/data/
+            - name: init
+              mountPath: /vault/init/
+            {{ if .Values.tls.enabled }}
+            - name: tls-secret-volume
+              mountPath: /vault/tls
+              readOnly: true
+            {{ end }}
+          env:
+            - name: VAULT_ADDR
+              value:  {{ if  .Values.tls.enabled}} "https://127.0.0.1:8200" {{ else }} "http://127.0.0.1:8200"   {{ end }}
+            {{ if .Values.tls.enabled }}
+            - name: VAULT_CACERT
+              value: "/vault/tls/tls.crt"
+            {{ end }}
+
+        - name: secret-creating
+          image: ricsanfre/docker-curl-jq
+          restartPolicy: Always
+          command: ["/bin/sh", "-c" ]
+          args:
+          - |
+            until [ -f "/vault/data/init_key.json" ]; do
+            echo "Waiting for Vault initialization..."
+            sleep 2
+            done
+            sleep 5
+            # Extract keys and create Kubernetes Secret
+            if [ -f "/vault/data/init_key_deleted.json" ]; then 
+              echo "Secret Created"
+            else 
+              echo "existing json: $(cat /vault/data/init_key.json)"
+              TOKEN=$(jq -r '.root_token' /vault/data/init_key.json | base64 | tr -d '\n')
+              UNSEAL_KEYS=$(jq -r '.recovery_keys_b64[]' /vault/data/init_key.json | base64 | tr -d '\n' | paste -sd "," -)
+              echo "Token:{$TOKEN}"
+              echo "Unseal:{$UNSEAL_KEYS}"
+              echo "Creating Kubernetes Secret..."
+              curl   \
+                -X POST \
+                -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
+                -H "Accept: application/json" \
+                -H "Content-Type: application/json" \
+                --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+                -d '{
+                  "apiVersion": "v1",
+                  "kind": "Secret",
+                  "metadata": {
+                    "namespace": "vault",
+                    "name": "keys"
+                  },
+                  "type": "Opaque",
+                  "data": {
+                    "token": "'"$TOKEN"'",
+                    "unseal": "'"$UNSEAL_KEYS"'"
+                  }
+                }' \
+                https://kubernetes.default.svc.cluster.local/api/v1/namespaces/vault/secrets
+
+              echo "Vault keys saved in Kubernetes Secret."
+              rm /vault/data/init_key.json
+              touch /vault/data/init_key_deleted.json
+            fi
+
+
+          resources:
+            requests:
+              memory: "10Mi"
+              cpu: "10m"
+            limits:
+              memory: "30Mi"
+              cpu: "30m"
+          volumeMounts:
+            - name: data
+              mountPath: /vault/data/
+            - name: init
+              mountPath: /vault/init/
+            {{ if .Values.tls.enabled }}
+            - name: tls-secret-volume
+              mountPath: /vault/tls
+              readOnly: true
+            {{ end }}
+
+
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.defaultCapacity }}Gi
+
+---
+
+{{- range $index, $follower := until (.Values.followers | int) }}
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "vault-cluster.fullname" $ }}-follower{{ add $index 1 }}
+  namespace: {{ $.Values.namespace }}
+  labels:
+    service: follower{{ add $index 1 }}
+    {{- include "vault-cluster.labels" $ | nindent 4 }}
+
+spec:
+  selector:
+    matchLabels:
+      service: follower{{ add $index 1 }}
+      {{- include "vault-cluster.selectorLabels" $ | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        service: follower{{ add $index 1 }}
+        {{- include "vault-cluster.labels" $ | nindent 8 }}
+
+    spec:
+      terminationGracePeriodSeconds: 10
+      serviceAccountName: vault
+      securityContext:
+        runAsNonRoot: true
+        runAsGroup: 1000
+        runAsUser: 100
+        fsGroup: 1000
+      hostNetwork: false
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "vault-cluster.fullname" $ }}-followers-config
+        - name: home
+          emptyDir: {}
+
+
+        {{ if $.Values.tls.enabled }}
+        - name: tls-secret-volume
+          secret:
+            secretName: {{ $.Values.tls.secret}}
+            items:
+              - key: {{ $.Values.tls.ca_cert }}
+                path: tls.crt
+              - key: {{ $.Values.tls.ca_key}}
+                path: tls.key
+        {{ end }}
+      containers:
+        - name: vault
+          image: hashicorp/vault:1.19.0
+          imagePullPolicy: IfNotPresent
+          command:
+          - "/bin/sh"
+          - "-ec"
+          args:
+          - |
+            vault server -config=/vault/config/vault-follower{{ add $index 1 }}.hcl
+          securityContext:
+            allowPrivilegeEscalation: false
+
+          resources:
+            requests:
+              memory: "100Mi"
+              cpu: "100m"
+            limits:
+              memory: "300Mi"
+              cpu: "300m"
+          env:
+            - name: VAULT_ADDR
+              value: {{ if  $.Values.tls.enabled }} "https://127.0.0.1:8200" {{ else }} "http://127.0.0.1:8200"   {{ end }}
+  
+            {{ if $.Values.aws.enabled }}
+            - name: AWS_ACCESS_KEY_ID
+              value: "{{ $.Values.aws.aws_access_key }}"
+            - name: AWS_SECRET_ACCESS_KEY
+              value: "{{ $.Values.aws.aws_secret_key }}"
+            {{ end }}
+
+            - name: HOME
+              value: "/home/vault"
+            {{ if $.Values.tls.enabled }}
+            - name: VAULT_CACERT
+              value: "/vault/tls/tls.crt"
+            {{ end }}
+
+
+          volumeMounts:
+            - name: data
+              mountPath: /vault/data
+            - name: config
+              mountPath: /vault/config
+            {{ if $.Values.tls.enabled }}
+            - name: tls-secret-volume
+              mountPath: /vault/tls
+              readOnly: true
+            {{ end }}
+            - name: home
+              mountPath: /home/vault
+          ports:
+            - containerPort: 8200
+              name: http
+            - containerPort: 8201
+              name: http-cluster
+          lifecycle:
+            # Vault container doesn't receive SIGTERM from Kubernetes
+            # and after the grace period ends, Kube sends SIGKILL.  This
+            # causes issues with graceful shutdowns such as deregistering itself
+            # from Consul (zombie services).
+            preStop:
+              exec:
+                command:
+                - "/bin/sh"
+                - "-c"
+                # Adding a sleep here to give the pod eviction a
+                # chance to propagate, so requests will not be made
+                # to this pod while it's terminating
+                - "sleep 5 && kill -SIGTERM $(pidof vault)"
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ $.Values.defaultCapacity }}Gi
+---
+{{ end }}

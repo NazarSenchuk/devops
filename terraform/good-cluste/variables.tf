@@ -10,8 +10,9 @@ variable "cluster_name" {
 }
 
 variable "default_tags" {
-  type        = map(string)
   description = "Default tags for AWS that will be attached to each resource."
+  type        = map(string)
+
   default = {
     "TerminationDate" = "Permanent",
     "Environment"     = "Development",
@@ -19,6 +20,7 @@ variable "default_tags" {
     "DeployedBy"      = "Terraform",
     "OwnerEmail"      = "senchuknazar6@gmail.com"
   }
+
 }
 
 
@@ -56,8 +58,8 @@ variable "desired_size" {
 
 variable "addon_version" {
   description = "Version of the addon"
-  type = string
-  default = "v1.39.0-eksbuild.1"
+  type        = string
+  default     = "v1.39.0-eksbuild.1"
 }
 
-    
+

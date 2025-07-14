@@ -1,0 +1,24 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: main
+  namespace: monitoring
+spec:
+  route:
+    receiver: "gmail"  # Must match receiver name below
+    groupBy: []        # No grouping (send all alerts individually)
+    groupWait: 0s      # No delay for the first alert
+    groupInterval: 0s   # No batching
+    repeatInterval: 12h # Throttle repeats
+  receivers:
+  - name: "gmail"
+    emailConfigs:
+    - to: "senchuknazar6@gmail.com"
+      from: "senchuknazar6@gmail.com"
+      smarthost: "smtp.gmail.com:587"
+      authUsername: "senchuknazar6@gmail.com"
+      authPassword:
+        name: alertmanager-smtp-password  # Must exist as a Secret
+        key: password
+      sendResolved: true
+     

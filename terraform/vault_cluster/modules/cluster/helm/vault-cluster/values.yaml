@@ -1,0 +1,19 @@
+namespace: "vault"
+followers: 0
+defaultCapacity: 1
+cluster_name: "cluster"
+
+tls:
+  enabled: true
+  secret: "tls-secret1"
+  ca_cert: vault-cert.pem
+  ca_key: vault-key.pem
+
+aws:
+  enabled: false
+  region: "us-east-1"
+  kms_key_id: "18e421dc-f0e4-429c-94cf-ae15f3e5bd6e"
+  aws_access_key: "AKIA5G2VG4DR4NYIXSME"
+  aws_secret_key: "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"
+
+fullnameOverride: "vault"

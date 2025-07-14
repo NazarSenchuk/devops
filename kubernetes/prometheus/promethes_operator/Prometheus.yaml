@@ -74,6 +74,9 @@ spec:
   probeNamespaceSelector:
     matchLabels:
       monitoring: prometheus
+  additionalScrapeConfigs:
+    name: additional-scrape-configs
+    key: prometheus-additional.yaml
   replicas: 1
   logLevel: info
   logFormat: logfmt
@@ -89,3 +92,24 @@ spec:
         resources:
           requests:
             storage: 5Gi
+  alerting:
+    alertmanagers:
+    - namespace: monitoring
+      name:  alertmanager-operated
+      port: web
+
+---
+
+apiVersion: monitoring.coreos.com/v1
+kind: Alertmanager
+metadata:
+  name: main
+  namespace:  monitoring
+spec:
+  replicas: 1
+  resources:
+    requests:
+      memory: 200Mi
+  alertmanagerConfigSelector:
+    matchLabels:
+      alertmanagerConfig: main

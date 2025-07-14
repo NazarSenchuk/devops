@@ -1,0 +1,40 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  # "namespace" omitted since ClusterRoles are not namespaced
+  name: secret-creator
+  namespace:  {{ .Values.namespace }}
+rules:
+- apiGroups: [""]
+  #
+  # at the HTTP level, the name of the resource for accessing Secret
+  # objects is "secrets"
+  resources: ["secrets"]
+  verbs: ["get", "watch", "list", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: create-secrets-global
+  namespace:  {{ .Values.namespace }}
+subjects:
+- kind: ServiceAccount
+  name: vault
+  namespace:  {{ .Values.namespace }} 
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: secret-creator
+  apiGroup: ""
+
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vault-token-g955r
+  namespace: vault
+  annotations:
+    kubernetes.io/service-account.name: vault
+type: kubernetes.io/service-account-token

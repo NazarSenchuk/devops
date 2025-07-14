@@ -22,6 +22,7 @@ module "network"{
 module "ansible"{
   source = "./ansible"
 
+  instance_type = var.instance_type
   ansible_subnet=  module.network.subnet_for_ansible
   vpc_id = module.network.vpc_id
 }

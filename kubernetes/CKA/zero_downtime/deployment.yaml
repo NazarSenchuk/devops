@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: nginx
+  name: nginx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
+        resources: {}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+
+main problems:
+
+/healthz возвращает 200 даже во время graceful‑shutdown (SIGTERM → 30 с drain).  
+* terminationGracePeriodSeconds = 60, а Ingress ALB считает Pod «живым», пока тот не закроется.  
+* В итоге старый Pod уже не принимает новые запросы, но остаётся в EndpointSlice ещё ±60 секунд.
+
+
+best practice:
+Hapens situations when  pod don't  work but  ingress sends traffic to  pod
+for this responds  readinessProbe  but if it isn't correctly adjusted
+pod stop working  and  for some time  ingress or alb detach this pod
+
+for this  we have  best practice  to faster define that pods don't work
+and  detach.
+
+when pods  stop working we  delete file that define it 
+after that readinessProbe check and  detach  pod from  traffic.
+
+2. **Deployment patch**
+
+
+
+  ```diff
+
+  spec:
+
+   strategy:
+
+    type: RollingUpdate
+
+    rollingUpdate:
+
++    maxSurge: 1
+
++    maxUnavailable: 0   # ни один Pod не исчезнет, пока не появится новый
+
+   template:
+
+    spec:
+
+     terminationGracePeriodSeconds: 90
+
++    lifecycle:
+
++     preStop:
+
++      exec:
+
++       command: ["sh", "-c", "rm /tmp/ready && sleep 15"]
+
+  ```
+
+
+
+3. **Probes**
+
+
+
+  ```yaml
+
+  readinessProbe:
+
+   exec:
+
+    command: ["sh", "-c", "[ -f /tmp/ready ]"]
+
+
+but before  it we need to creating file  in image  tmp/ready
+ # docker/entrypoint.sh
+
+  touch /tmp/ready
+
+  postStart:
+          exec:
+            command: ["/bin/sh", "-c", "touch /tmp/ready"]
+
+or by job,  sidecar
+
+
+
+advantages:
+Before  terminating app(calling SIGTERM signal)  we run command perStop(preStop is executed before terminating  )
+As we have  in preStop command  rm /tmp/ready/   ,  readinesProbe check  existing of file and detach traffic.
+This  method  provide  early detach of  not working pod .

@@ -1,0 +1,7 @@
+[
+	{ "keys": ["ctrl+alt+t"], "command": "terminus_open" },
+    {"keys": ["ctrl+t"], "command": "terminus_open"},
+    { "keys": ["ctrl+w"], "command": "close" },
+    { "keys": ["ctrl+n"], "command": "new_file" },
+    { "keys": ["ctrl+p"], "command": "show_overlay", "args": {"overlay": "goto", "show_files": true} },
+]

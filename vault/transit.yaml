@@ -1,0 +1,117 @@
+Transit secret engine  is  tool for encrypting and decrypting  informations in your app.
+Transit don't storage data .
+
+
+Use case:
+// Encrypt card at point of entry
+public String processPayment(PaymentRequest request) {
+    String encryptedCard = vaultClient.encrypt(
+        "payment-cards-key",
+        Base64.getEncoder().encodeToString(request.cardNumber.getBytes())
+    );
+    paymentProcessor.charge(encryptedCard, request.amount);
+    return encryptedCard; // Store only encrypted
+}
+
+// Decrypt only in secure payment processing environment
+public void refund(String transactionId) {
+    String encryptedCard = db.getCardForTransaction(transactionId);
+    String cardNumber = new String(Base64.getDecoder().decode(
+        vaultClient.decrypt("payment-cards-key", encryptedCard)
+    ));
+    paymentProcessor.refund(cardNumber);
+}
+
+
+simulating  on vault:
+
+# Encrypt sensitive data
+ciphertext=$(vault write transit/encrypt/customer-data \
+             plaintext=$(base64 <<< "Credit card: 4111...") \
+             -format=json | jq -r '.data.ciphertext')
+
+# Store ciphertext in KV
+vault kv put secret/customers/john payment_info=$ciphertext
+
+# Later retrieval flow
+ciphertext=$(vault kv get -field=payment_info secret/customers/john)
+plaintext=$(vault write transit/decrypt/customer-data \
+            ciphertext=$ciphertext -format=json | jq -r '.data.plaintext')
+echo $(base64 -d <<< "$plaintext")  # "Credit card: 4111..."
+
+Why better use Transit insted of App-level encription?
+1. Centralized Key Management
+
+    Problem: If you hardcode encryption keys or store them in config files, they can leak.
+
+    Solution: Vault manages keys securely, with automatic rotation and access control.
+
+    Example:
+    sh
+
+    # Rotate encryption key with one command (no app redeploy needed)
+    vault write -f transit/keys/my-key/rotate
+
+2. No Key Exposure
+
+    Problem: If your app handles encryption, keys must be accessible to it (risk of leaks).
+
+    Solution: Apps only see ciphertext—keys never leave Vault.
+    python
+
+
+    cipher = AES.new("my-secret-key-123", AES.MODE_GCM)
+
+    ciphertext = vault.write("transit/encrypt/my-key", plaintext=base64_data)
+
+3. Consistent Encryption Across Services
+
+    Problem: Different apps/languages might implement encryption differently.
+
+    Solution: Vault provides a uniform encryption/decryption API for all services.
+    java
+
+    // Python service encrypts
+    ciphertext = vault.encrypt("shared-key", "data")
+
+    // Java service decrypts
+    plaintext = vault.decrypt("shared-key", ciphertext)
+
+4. Audit Logging & Access Control
+
+    Problem: Hard to track who encrypted/decrypted what in custom code.
+
+    Solution: Vault logs every operation and enforces policies.
+    sh
+
+
+    vault audit list
+    vault read sys/audit
+
+5. Automated Key Rotation Without Downtime
+
+    Problem: Rotating keys in custom code requires redeploying apps.
+
+    Solution: Vault supports key versions and rewrapping.
+    sh
+
+    vault write -f transit/keys/my-key/rotate
+
+
+    vault write transit/rewrap/my-key ciphertext="vault:v1:old-data..."
+
+6. Cryptographic Best Practices by Default
+
+    Problem: Developers might misuse crypto libraries (weak algorithms, bad IVs, etc.).
+
+    Solution: Vault uses strong standards (AES-GCM, RSA-OAEP, etc.) correctly.
+    sh
+
+
+    vault write transit/encrypt/my-key plaintext=$(base64 <<< "data")
+
+7. Performance & Caching
+
+    Problem: App-level crypto can slow down services.
+
+    Solution: Vault can cache encryption ops (via its API or sidecar

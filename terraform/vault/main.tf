@@ -5,15 +5,15 @@ provider "vault" {
   #
   # This will default to using $VAULT_ADDR
   # But can be set explicitly
-  address = "http://localhost:8200"
-  token = var.vault_token
+  address = "http://localhost:1234"
+  token   = var.vault_token
 }
 
 data "vault_generic_secret" "database" {
-  path      = "secret/webapp/config"
+  path = "secret/aws"
 }
 
 resource "local_file" "credentials_file" {
-  content = "${data.vault_generic_secret.database.data["password"]}"
-  filename    = "credentials.txt"
+  content  = "Access Key: ${data.vault_generic_secret.database.data["access_key"]}\nSecret Key: ${data.vault_generic_secret.database.data["secret_key"]}"
+  filename = "credentials.txt"
 }

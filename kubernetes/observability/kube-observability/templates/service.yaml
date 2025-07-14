@@ -1,0 +1,18 @@
+{{- if .Values.fluentbit.create }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kube-observability.fluentbit.fullname" . }}-service
+  namespace: {{ .Values.fluentbit.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "kube-observability.fluentbit.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.fluentbit.service.type | default "ClusterIP" }}  # ← Fallback value
+  ports:
+    - port: {{ .Values.fluentbit.service.port | default 2020 }}
+      targetPort: {{ .Values.fluentbit.service.targetPort | default "http" }}
+      protocol: {{ .Values.fluentbit.service.protocol | default "TCP" }}
+      name: http
+  selector:
+    {{- include "kube-observability.fluentbit.selectorLabels" . | nindent 4 }}
+{{- end }}

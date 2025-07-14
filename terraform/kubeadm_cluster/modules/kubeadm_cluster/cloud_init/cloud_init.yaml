@@ -1,0 +1,94 @@
+#cloud-config
+write_files:
+  - path: /etc/modules-load.d/k8s.conf
+    content: |
+      overlay
+      br_netfilter
+    owner: root:root
+    permissions: '0644'
+  
+  - path: /etc/sysctl.d/10-k8s.conf
+    content: |
+      net.bridge.bridge-nf-call-ip6tables = 1
+      net.bridge.bridge-nf-call-iptables = 1
+      net.ipv4.ip_forward = 1
+    owner: root:root
+    permissions: '0644'
+
+  - path: /etc/apt/sources.list.d/kubernetes.list
+    content: |
+      deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /
+    owner: root:root
+    permissions: '0644'
+
+  - path: /etc/systemd/system/containerd.service
+    content: |
+      [Unit]
+      Description=containerd container runtime
+      Documentation=https://containerd.io
+      After=network.target local-fs.target
+
+      [Service]
+      ExecStartPre=-/sbin/modprobe overlay
+      ExecStart=/usr/local/bin/containerd
+      Type=notify
+      Delegate=yes
+      KillMode=process
+      Restart=always
+      RestartSec=5
+      LimitNPROC=infinity
+      LimitCORE=infinity
+      LimitNOFILE=infinity
+      TasksMax=infinity
+      OOMScoreAdjust=-999
+
+      [Install]
+      WantedBy=multi-user.target
+    owner: root:root
+    permissions: '0644'
+
+  - path: /etc/crictl.yaml
+    content: |
+      runtime-endpoint: unix:///var/run/containerd/containerd.sock
+    owner: root:root
+    permissions: '0644'
+
+runcmd:
+  # Kernel modules and networking
+  - modprobe overlay
+  - modprobe br_netfilter
+  - sysctl -f /etc/sysctl.d/10-k8s.conf
+  - swapoff -a
+  - sed -i '/ swap / s/^/#/' /etc/fstab
+
+  # Kubernetes repository setup
+  - mkdir -p /etc/apt/keyrings
+  - curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  - chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  - apt-get update
+
+  # Containerd installation
+  - wget -q https://github.com/containerd/containerd/releases/download/v2.0.4/containerd-2.0.4-linux-amd64.tar.gz -O /tmp/containerd.tar.gz
+  - tar Cxzvf /usr/local /tmp/containerd.tar.gz
+  - rm /tmp/containerd.tar.gz
+  - mkdir -p /etc/containerd/
+  - /usr/local/bin/containerd config default > /etc/containerd/config.toml
+
+  # Runc installation
+  - wget -q https://github.com/opencontainers/runc/releases/download/v1.2.6/runc.amd64 -O /tmp/runc.amd64
+  - install -m 755 /tmp/runc.amd64 /usr/local/sbin/runc
+  - rm /tmp/runc.amd64
+
+  # CNI plugins installation
+  - wget -q https://github.com/containernetworking/plugins/releases/download/v1.6.2/cni-plugins-linux-amd64-v1.6.2.tgz -O /tmp/cni-plugins.tgz
+  - mkdir -p /opt/cni/bin
+  - tar Cxzvf /opt/cni/bin /tmp/cni-plugins.tgz
+  - rm /tmp/cni-plugins.tgz
+
+  # Start containerd service
+  - systemctl daemon-reload
+  - systemctl enable --now containerd
+
+  # Kubernetes installation
+  - apt-get install -y kubeadm kubectl kubelet
+  - apt-mark hold kubeadm kubectl kubelet

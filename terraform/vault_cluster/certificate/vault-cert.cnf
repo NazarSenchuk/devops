@@ -1,0 +1,30 @@
+[req]
+default_bits       = 2048
+prompt             = no
+default_md         = sha256
+distinguished_name = req_distinguished_name
+req_extensions     = req_ext
+x509_extensions    = v3_ca
+
+[req_distinguished_name]
+C  = US
+ST = California
+L  = San Francisco
+O  = HashiCorp
+OU = Vault
+CN = vault-leader.vault.svc.cluster.local  # Primary CN
+
+[req_ext]
+subjectAltName = @alt_names
+
+[v3_ca]
+subjectAltName = @alt_names
+keyUsage       = digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth, clientAuth
+
+[alt_names]
+DNS.1 = localhost
+DNS.2 = vault-leader.vault.svc.cluster.local
+DNS.3 = *.vault.svc.cluster.local
+
+IP.1  = 127.0.0.1

@@ -1,0 +1,57 @@
+When you create cluster  , you need to create  , unseal and login first node , that will be first leader of cluster.
+Leader  - active  -> Handles all requests 
+Folower - standby  -> redirect all requests to  active (if enterprise  read available)
+If your leader is  down  , your  followers which have voter status  ,participate in  leader  election. 
+
+to setup cluster:
+simple example: 
+
+leader configuration:
+
+api_addr                = "http://vault:8200"
+cluster_addr            = "http://vault:8201"
+cluster_name            = "learn-vault-cluster"
+disable_mlock           = true
+ui                      = true
+
+listener "tcp" {
+address       = "0.0.0.0:8200"
+tls_disable = true
+}
+
+backend "raft" {
+path    = "/vault/data"
+node_id = "vault-leader"
+}
+
+
+
+folowers configurations:
+api_addr                = "http://vault1:8200"
+cluster_addr            = "http://vault1:8201"
+cluster_name            = "learn-vault-cluster"
+disable_mlock           = true
+ui                      = true
+
+listener "tcp" {
+address       = "0.0.0.0:8200"
+tls_disable = true
+}
+
+backend "raft" {
+path    = "/vault/data/folower1"
+node_id = "vault-follower"
+
+retry_join{
+  leader_api_addr = "http://vault:8200"
+}
+}
+
+
+main issues:
+Error initializing storage of type raft: failed to create fsm: failed to open bolt file: open /data/vault.db: ped 
+solution: vault can't access to create files  , maybe this directory used by another vault node 
+local node not active but active cluster node not found
+solution: check ip configurations
+Preventing server addition that would require removal of too many servers and cause cluster instability
+solution: set dns names instead of ip for you vault folowers.

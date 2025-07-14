@@ -1,0 +1,36 @@
+OpenID Connect is an open standard authentication protocol built on top of the OAuth 2.0 authorization framework. It allows developers to authenticate users across websites mobile apps and applications without needing to own and manage password credentials.
+
+At its core, OAuth2 is an authorization framework that has become the industry standard for authorizing third-party access to user information on a service without sharing their user credentials themselves (most commonly, passwords).
+
+
+
+While OAuth 2.0 and OpenID Connect are closely related and often used together, they serve different purposes and address different needs in security and access management. Recognizing the distinctions between these two standards is crucial for implementing appropriate authentication (OpenID Connect) and authorization (OAuth) mechanisms in your applications.
+
+OAuth 2.0 - authorization
+OIDC  -   authentication
+
+Authentication (AuthN) – "Who are you?"
+
+    Verifies the identity of a user or system.
+
+    Confirms that the user is who they claim to be.
+
+    Examples:
+
+        Logging in with a username and password.
+
+        Using biometrics (fingerprint, face recognition).
+
+        Two-factor authentication (2FA).
+
+2. Authorization (AuthZ) – "What can you do?"
+
+    Determines the permissions of an authenticated user.
+
+    Defines what resources or actions a user is allowed to access.
+
+    Examples:
+
+        An admin can delete users, but a regular user cannot.
+
+        A customer can view their own orders but not others'.

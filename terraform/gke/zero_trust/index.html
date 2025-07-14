@@ -1,0 +1,56 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Google Sign-In with Firebase</title>
+  <!-- Firebase SDK -->
+
+  <script src="https://www.gstatic.com/firebasejs/8.0/firebase.js"></script>
+</head>
+<body>
+  <button id="googleSignIn">Sign In with Google</button>
+  <button id="signOut" style="display:none;">Sign Out</button>
+  <div id="userInfo"></div>
+
+  <script>
+    // Firebase Config (Replace with yours)
+    var config = {
+    apiKey: "AIzaSyC6sGCipTxsOUMe5VoC7lozyXGyHQcq0a0",
+    authDomain: "daring-chess-382110.firebaseapp.com",
+  };
+    // Initialize Firebase
+    app = firebase.initializeApp(config);
+
+    // Google Auth Provider
+    const provider = new firebase.auth.GoogleAuthProvider();
+
+    // Sign In
+    document.getElementById("googleSignIn").addEventListener("click", () => {
+      firebase.auth().signInWithPopup(provider)
+        .then((result) => {
+          const user = result.user;
+          console.log("User signed in:", user);
+          document.getElementById("userInfo").innerHTML = `
+            <h3>Welcome, ${user.displayName}!</h3>
+            <p>Email: ${user.email}</p>
+            <img src="${user.photoURL}" width="100">
+          `;
+          document.getElementById("signOut").style.display = "block";
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+        });
+    });
+
+    // Sign Out
+    document.getElementById("signOut").addEventListener("click", () => {
+      firebase.auth().signOut()
+        .then(() => {
+          document.getElementById("userInfo").innerHTML = "";
+          document.getElementById("signOut").style.display = "none";
+        });
+    });
+  </script>
+</body>
+</html>
+

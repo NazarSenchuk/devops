@@ -1,4 +1,15 @@
 https://habr.com/ru/companies/kts/articles/723980/#3
+To set up  scalable and monolythic loki you need to have morre than one node
+due to this  configuration in  loki:
+affinity:
+      podAntiAffinity:
+        preferedDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: write
+            topologyKey: kubernetes.io/hostname
+
+
 Components:
 -Distributer:
 Handling incoming requests with logs
@@ -106,10 +117,4 @@ storage_config:
   ingestion_burst_size_mb: 32
   max_entries_limit_per_query: 5000 #Limits the number of log entries returned by a single query
   retention_period: 744h # 31 days
-      
-      
-      
-      
-      
-      
       

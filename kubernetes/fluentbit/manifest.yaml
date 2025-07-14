@@ -1,0 +1,316 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fluent-bit1
+  namespace: default
+  labels:
+    app.kubernetes.io/managed-by: "Helm"
+    meta.helm.sh/release-name: "fluentbit"
+  annotations:
+    meta.helm.sh/release-name: "fluentbit"
+    meta.helm.sh/release-namespace: "default"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fluent-bit-read
+rules:
+- apiGroups: [""]
+  resources:
+  - namespaces
+  - pods
+  - pods/logs
+  - events
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: fluent-bit-read
+subjects:
+- kind: ServiceAccount
+  name: fluent-bit1
+  namespace: default
+
+---
+# Source: fluent-bit/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentbit-fluent-bit
+  namespace: default
+  labels:
+    app: fluent-bit
+data:
+  custom_parsers.conf: |
+    [PARSER]
+        Name docker_no_time
+        Format json
+        Time_Keep Off
+        Time_Key time
+        Time_Format %Y-%m-%dT%H:%M:%S.%L
+    [PARSER]
+        Name   nginx_access
+        Format regex
+        Regex ^(?<client_ip>[^ ]*) (?<host>[^ ]*) (?<user>[^ ]*) \[(?<time>[^\]]*)\] "(?<method>\S+)(?: +(?<path>[^\"]*?)(?: +\S*)?)?" (?<code>[^ ]*) (?<size>[^ ]*)(?: "(?<from>[^\"]*)" "(?<agent>[^\"]*)")
+        Time_Key time
+        Time_Format %d/%b/%Y:%H:%M:%S %z
+
+    [PARSER]
+        Name   nginx_error
+        Format regex
+        Regex ^(?<date>\d{4}/\d{2}/\d{2})\s(?<time>\d{2}:\d{2}:\d{2})\s\[(?<level>\w+)\]\s(?<pid>\d+)#(?<tid>\d+):\s\*(?<request_id>\d+)\s(?<message>.*?),\sclient:\s(?<client>[^,]+),\sserver:\s(?<server>[^,]+),\srequest:\s"(?<method>\w+)\s(?<path>[^"]+)\s(?<http_version>HTTP/\d\.\d)",\shost:\s"(?<host>[^"]+)"$
+        Time_Key time
+        Time_Format %d/%b/%Y:%H:%M:%S %z
+  fluent-bit.conf: |
+    [SERVICE]
+        Daemon Off
+        Flush 1
+        Log_Level info
+        Parsers_File /fluent-bit/etc/parsers.conf
+        Parsers_File /fluent-bit/etc/conf/custom_parsers.conf
+        HTTP_Server On
+        HTTP_Listen 0.0.0.0
+        HTTP_Port 2020
+        Health_Check On
+    [INPUT]
+        Name tail
+        Path /var/log/containers/nginx*.log
+        DB     /var/log/flb_nginx.db
+        Parser docker
+        Tag nginx.*
+        Mem_Buf_Limit 100MB
+        Skip_Long_Lines On
+    [INPUT]
+        Name tail
+        Path /var/log/containers/kube*.log
+        DB     /var/log/flb_kube.db
+        Parser docker
+        Tag kube.*
+        Mem_Buf_Limit 100MB
+        Skip_Long_Lines On
+    [INPUT]
+        name            kubernetes_events
+        tag             events.*
+        kube_url        https://kubernetes.default.svc
+        kube_retention_time 1h
+        interval_sec 5
+        DB     /var/log/flb_events.db
+    [INPUT]
+        Name systemd
+        Tag host.*
+        Systemd_Filter _SYSTEMD_UNIT=kubelet.service
+    [FILTER]
+        Name modify
+        Match * 
+        Rename log content
+    [FILTER]
+        Name nest
+        Match *
+        Operation lift
+        Nested_under kubernetes
+        Add_prefix   kubernetes_
+    [FILTER]
+        Name modify
+        Match *
+        Rename log content
+        Rename kubernetes_pod_name pod
+        Rename kubernetes_namespace_name namespace
+        Remove kubernetes_container_image
+        Remove kubernetes_docker_id
+        Remove kubernetes_container_name
+        Remove kubernetes_pod_id
+        Remove time
+        Remove kubernetes_container_hash
+        Add log kube
+    [FILTER]
+        Name parser
+        Match  nginx.*
+        Key_Name content
+        Parser  nginx_access
+        Reserve_Data true 
+
+    [FILTER]
+        Name parser
+        Match nginx.*
+        Key_Name content
+        Parser  nginx_error
+        Reserve_Data true
+    [FILTER]
+        Name modify
+        Match nginx.*
+        Set log nginx
+        Condition Key_Does_Not_Exist level
+        Add lavel access
+    [FILTER]
+        Name          nest
+        Match         *
+        Operation     lift
+        Nested_under  involvedObject
+    
+    [FILTER] 
+        Name     modify
+        Match events.*
+        Remove_wildcard fieldPath
+        Remove_wildcard apiVersion
+        Remove_wildcard resourceVersion
+        Remove_wildcard uid
+        Rename        name pod
+        Remove_wildcard date
+        Remove_wildcard apiVersion
+        Remove_wildcard metadata
+        Remove_wildcard uid
+        Remove_wildcard resourceVersion
+        Remove_wildcard creationTimestamp
+        Remove_wildcard managedFields
+        Remove_wildcard source
+        Remove_wildcard firstTimestamp
+        Remove_wildcard lastTimestamp
+        Remove_wildcard count
+        Remove_wildcard type
+        Remove_wildcard eventTime
+        Remove_wildcard reportingInstance
+        Set             log events
+
+    [OUTPUT]
+        Name stdout
+        Match *
+        Format json
+    
+    [OUTPUT]
+        name loki
+        Match events.*
+        Host loki-gateway
+        Port 80
+        labels reason=$reason ,log=$log, kind=$kind ,namespace=$namespace , name=$name  , pod=$pod
+        label_keys  $reason, $log, $kind , $namespace ,$pod, $name
+        line_format json
+        Tenant_ID       fake-tenant
+    
+    
+    [OUTPUT]
+        name loki
+        Match kube.*
+        Host loki-gateway
+        Port 80
+        labels pod=$pod ,namespace=$namespace ,kubernetes_host=$kubernetes_host,  log=$log 
+        label_keys   $pod , $namespace , $kubernetes_host , $kubernetes_pod_ip , $log
+        line_format json
+        Tenant_ID       fake-tenant
+    
+    [OUTPUT]
+        name loki
+        Match nginx.*
+        Host loki-gateway
+        Port 80
+        labels  level=$level, client_ip=$client_ip  , host=$host , user=$user , method=$method , path=$path , code=$code ,from=$from , agent=$agent , pod=$pod , namespace=$namespace  ,log=$log 
+        label_keys  $level, $client_ip, $host ,  $user , $method , $path , $code ,  $from , $agent , $pod , $namespace ,  $kubernetes_host , $log 
+        line_format json
+---
+# Source: fluent-bit/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: fluentbit-fluent-bit
+  namespace: default
+  labels:
+    helm.sh/chart: fluent-bit-0.48.10
+    app.kubernetes.io/name: fluent-bit
+    app.kubernetes.io/instance: fluentbit
+spec:
+  type: ClusterIP
+  ports:
+    - port: 2020
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: fluent-bit
+    app.kubernetes.io/instance: fluentbit
+---
+# Source: fluent-bit/templates/daemonset.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentbit-fluent-bit
+  namespace: default
+  labels:
+    app.kubernetes.io/name: fluent-bit
+    app.kubernetes.io/instance: fluentbit
+
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fluent-bit
+      app.kubernetes.io/instance: fluentbit
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: fluent-bit
+        app.kubernetes.io/instance: fluentbit
+    spec:
+      serviceAccountName: fluent-bit1
+      securityContext:
+        fsGroup: 2000
+        runAsGroup: 2000
+        runAsUser: 1000
+      hostNetwork: false
+      dnsPolicy: ClusterFirst
+      containers:
+        - name: fluent-bit
+          securityContext:
+            runAsGroup: 0
+            runAsUser: 0
+          image: "cr.fluentbit.io/fluent/fluent-bit:3.2.10"
+          imagePullPolicy: IfNotPresent
+          command:
+            - /fluent-bit/bin/fluent-bit
+          args:
+            - --workdir=/fluent-bit/etc
+            - --config=/fluent-bit/etc/conf/fluent-bit.conf
+          ports:
+            - name: http
+              containerPort: 2020
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+          volumeMounts:
+            - name: config
+              mountPath: /fluent-bit/etc/conf
+            - mountPath: /var/log/nginx
+              name: nginx
+            - mountPath: /var/log
+              name: varlog
+            - mountPath: /var/lib/docker/containers
+              name: varlibdockercontainers
+              readOnly: true
+            - mountPath: /etc/machine-id
+              name: etcmachineid
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: fluentbit-fluent-bit
+        - hostPath:
+            path: /var/log/nginx
+          name: nginx
+        - hostPath:
+            path: /var/log
+          name: varlog
+        - hostPath:
+            path: /var/lib/docker/containers
+          name: varlibdockercontainers
+        - hostPath:
+            path: /etc/machine-id
+            type: File
+          name: etcmachineid

@@ -31,12 +31,47 @@
   chunksCache:
     enabled: false
   backend:
-    replicas: 1
+    replicas: 2
+    persistence:
+      volumeClaimsEnabled: false
+      dataVolumeParameters:
+        emptyDir: {}
+
+    affinity:
+      podAntiAffinity:
+        preferedDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: write
+            topologyKey: kubernetes.io/hostname
   read:
     replicas: 2
+    persistence:
+      volumeClaimsEnabled: false
+      dataVolumeParameters:
+        emptyDir: {}
+
+    affinity:
+      podAntiAffinity:
+        preferedDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: write
+            topologyKey: kubernetes.io/hostname
   write:
     replicas: 2 # To ensure data durability with replication
+    persistence:
+      volumeClaimsEnabled: false
+      dataVolumeParameters:
+        emptyDir: {}
 
+    affinity:
+      podAntiAffinity:
+        preferedDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: write
+            topologyKey: kubernetes.io/hostname
   # Enable minio for storage
   minio:
     enabled: true

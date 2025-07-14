@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: payroll
+  labels:
+    app: payroll
+  annotations:
+    vault.hashicorp.com/tls-secret: "vault-tls"
+    vault.hashicorp.com/ca-cert: "/vault/tls/vault-cert.pem"
+    vault.hashicorp.com/agent-inject: 'true'
+    vault.hashicorp.com/role: 'test'
+    vault.hashicorp.com/agent-inject-secret-test: 'kv/data/test_secret'
+    vault.hashicorp.com/tls-skip-verify: 'true'
+spec:
+  serviceAccountName: default
+  containers:
+   - name: payroll
+     image: jweissig/app:0.0.1

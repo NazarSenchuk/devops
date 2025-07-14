@@ -1,0 +1,132 @@
+Name:               prometheus-main
+Namespace:          monitoring
+CreationTimestamp:  Fri, 09 May 2025 11:45:47 +0000
+Selector:           app.kubernetes.io/instance=main,app.kubernetes.io/managed-by=prometheus-operator,app.kubernetes.io/name=prometheus,operator.prometheus.io/name=main,operator.prometheus.io/shard=0,prometheus=main
+Labels:             managed-by=prometheus-operator
+                    operator.prometheus.io/mode=server
+                    operator.prometheus.io/name=main
+                    operator.prometheus.io/shard=0
+Annotations:        prometheus-operator-input-hash: 13715114554562252770
+Replicas:           1 desired | 1 total
+Update Strategy:    RollingUpdate
+Pods Status:        1 Running / 0 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:           app.kubernetes.io/instance=main
+                    app.kubernetes.io/managed-by=prometheus-operator
+                    app.kubernetes.io/name=prometheus
+                    app.kubernetes.io/version=2.42.0
+                    operator.prometheus.io/name=main
+                    operator.prometheus.io/shard=0
+                    prometheus=main
+  Annotations:      kubectl.kubernetes.io/default-container: prometheus
+  Service Account:  prometheus
+  Init Containers:
+   init-config-reloader:
+    Image:      quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1
+    Port:       8081/TCP
+    Host Port:  0/TCP
+    Command:
+      /bin/prometheus-config-reloader
+    Args:
+      --watch-interval=0
+      --listen-address=:8081
+      --config-file=/etc/prometheus/config/prometheus.yaml.gz
+      --config-envsubst-file=/etc/prometheus/config_out/prometheus.env.yaml
+      --watched-dir=/etc/prometheus/rules/prometheus-main-rulefiles-0
+    Limits:
+      cpu:     10m
+      memory:  50Mi
+    Requests:
+      cpu:     10m
+      memory:  50Mi
+    Environment:
+      POD_NAME:   (v1:metadata.name)
+      SHARD:     0
+    Mounts:
+      /etc/prometheus/config from config (rw)
+      /etc/prometheus/config_out from config-out (rw)
+      /etc/prometheus/rules/prometheus-main-rulefiles-0 from prometheus-main-rulefiles-0 (rw)
+  Containers:
+   prometheus:
+    Image:      quay.io/prometheus/prometheus:v2.42.0
+    Port:       9090/TCP
+    Host Port:  0/TCP
+    Args:
+      --config.file=/etc/prometheus/config_out/prometheus.env.yaml
+      --web.console.templates=/etc/prometheus/consoles
+      --web.console.libraries=/etc/prometheus/console_libraries
+      --web.enable-lifecycle
+      --web.route-prefix=/
+      --storage.tsdb.retention.time=7d
+      --storage.tsdb.path=/prometheus
+      --web.config.file=/etc/prometheus/web_config/web-config.yaml
+    Liveness:     http-get http://:web/-/healthy delay=0s timeout=3s period=5s #success=1 #failure=6
+    Readiness:    http-get http://:web/-/ready delay=0s timeout=3s period=5s #success=1 #failure=3
+    Startup:      http-get http://:web/-/ready delay=0s timeout=3s period=15s #success=1 #failure=60
+    Environment:  <none>
+    Mounts:
+      /etc/prometheus/certs from tls-assets (ro)
+      /etc/prometheus/config_out from config-out (ro)
+      /etc/prometheus/rules/prometheus-main-rulefiles-0 from prometheus-main-rulefiles-0 (rw)
+      /etc/prometheus/web_config/web-config.yaml from web-config (ro,path="web-config.yaml")
+      /prometheus from prometheus-main-db (rw,path="prometheus-db")
+   config-reloader:
+    Image:      quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1
+    Port:       8080/TCP
+    Host Port:  0/TCP
+    Command:
+      /bin/prometheus-config-reloader
+    Args:
+      --listen-address=:8080
+      --reload-url=http://localhost:9090/-/reload
+      --config-file=/etc/prometheus/config/prometheus.yaml.gz
+      --config-envsubst-file=/etc/prometheus/config_out/prometheus.env.yaml
+      --watched-dir=/etc/prometheus/rules/prometheus-main-rulefiles-0
+    Limits:
+      cpu:     10m
+      memory:  50Mi
+    Requests:
+      cpu:     10m
+      memory:  50Mi
+    Environment:
+      POD_NAME:   (v1:metadata.name)
+      SHARD:     0
+    Mounts:
+      /etc/prometheus/config from config (rw)
+      /etc/prometheus/config_out from config-out (rw)
+      /etc/prometheus/rules/prometheus-main-rulefiles-0 from prometheus-main-rulefiles-0 (rw)
+  Volumes:
+   config:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  prometheus-main
+    Optional:    false
+   tls-assets:
+    Type:                Projected (a volume that contains injected data from multiple sources)
+    SecretName:          prometheus-main-tls-assets-0
+    SecretOptionalName:  <nil>
+   config-out:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     Memory
+    SizeLimit:  <unset>
+   prometheus-main-rulefiles-0:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      prometheus-main-rulefiles-0
+    Optional:  false
+   web-config:
+    Type:          Secret (a volume populated by a Secret)
+    SecretName:    prometheus-main-web-config
+    Optional:      false
+  Node-Selectors:  <none>
+  Tolerations:     <none>
+Volume Claims:
+  Name:          prometheus-main-db
+  StorageClass:  
+  Labels:        <none>
+  Annotations:   <none>
+  Capacity:      5Gi
+  Access Modes:  [ReadWriteOnce]
+Events:
+  Type    Reason            Age                From                    Message
+  ----    ------            ----               ----                    -------
+  Normal  SuccessfulDelete  12m (x2 over 12m)  statefulset-controller  delete Pod prometheus-main-0 in StatefulSet prometheus-main successful
+  Normal  SuccessfulCreate  12m (x2 over 12m)  statefulset-controller  create Pod prometheus-main-0 in StatefulSet prometheus-main successful

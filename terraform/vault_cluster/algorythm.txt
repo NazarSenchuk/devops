@@ -1,0 +1,6 @@
+Terraform:
+1. Run helm chart: with template file 
+initilizes nodes  , configurations , storages for  kubernetes
+2. Initialization kubernetes auth
+3. Write secrets secrets
+4. Test  all secrets

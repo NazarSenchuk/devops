@@ -1,25 +1,52 @@
----
-resources:
-- ../base
-- ./namespace.yaml
-images:
-- name: nginx
-  # newName: my-nginx
-  newTag: 1.21.6
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 
 namePrefix: stg-
 namespace: staging
 
+resources:
+- ../base
+- ./namespace.yaml
+
+images:
+- name: nginx
+  newTag: 1.21.6
+
 secretGenerator:
-- name: db-secret
-  literals:
-  - username=admin
+- literals:
+  - username=nginx
   - password=secret
-
-
-commonLabels:
-  app: nginx
-  env: stg
+  name: db-secret
 
 commonAnnotations:
   owner: stg-team
+
+labels:
+- includeSelectors: true
+  includeTemplates: true
+  pairs:
+    app: nginx
+    env: stg
+
+patches:
+- patch: |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: nginx
+    spec:
+      template:
+        spec:
+          containers:
+          - name: nginx
+            env:
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: stg-db-secret  
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stg-db-secret 
+                  key: password

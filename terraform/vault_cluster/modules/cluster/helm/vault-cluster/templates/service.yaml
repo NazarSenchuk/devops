@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-leader
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "vault-cluster.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8200
+      targetPort: http
+      protocol: TCP
+      name: http
+
+    - port: 8201
+      targetPort: http-cluster
+      protocol: TCP
+      name: http-cluster
+  selector:
+    service:  leader
+
+
+---
+{{- range $index, $follower := until (.Values.followers | int) }}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-follower{{ add $index 1 }}
+  namespace: {{ $.Values.namespace }}
+  labels:
+    {{- include "vault-cluster.labels" $ | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8200
+      targetPort: http
+      protocol: TCP
+      name: http
+
+    - port: 8201
+      targetPort: http-cluster
+      protocol: TCP
+      name: http-cluster
+  selector:
+    service:  follower{{ add $index 1 }}
+---
+{{ end }}

@@ -1,0 +1,52 @@
+htop:
+tasks: number of all tasks 
+thr: threads
+running:  how many tasks really is running, not sleeping
+RES:  memory usage
+
+Inode:
+Structure  that describe  metadata of file,
+All files have inode
+too see  how much inodes is used:
+df -i
+By default linux creating  create  inode for every file  that weight more than 4kb.
+Hard link:
+to create link : ln file name_of_link
+if you create hard link , file and link will have the same inode number
+
+Swap:
+Paging  -  Linux  distribute  ram data on pages. one page 4kb
+Swaping - coping pages from ram to disk(swap space) when exist lack of memory.  
+swap file:
+sudo swapon -s
+Dissadvantages:
+Bigger latency.System first copy data from disk to ram.
+High Disk usage. You can kill your ssd/hdd disk using this mechanic.
+
+
+nice:
+
+
+
+size of files: du -hs directory or file
+
+
+cron:
+to add cron job  "crontab -e"
+
+
+
+backup:
+to backup  directory:  tar -czvf backup.tar.gz  path_to_directory
+to extract from backup directory:  tar -xf  backup.tar.gz
+and with rsync
+aws s3 sync
+
+
+ssh paswordless connection:
+1. Generation ssh key pair : ssh-keygen 
+2.  Copy this pair   to remote server: ssh-copy-id
+
+
+
+cpu governor: modes

@@ -1,0 +1,120 @@
+1. Service Tokens (Default Tokens)
+
+Description:
+
+    The most common token type in Vault.
+
+    Stored in Vault’s backend storage (Consul, Raft, etc.).
+
+    Supports renewal, revocation, and child token creation.
+
+Key Features:
+
+✅ Persistent (stored in Vault’s backend)
+✅ Renewable (can extend lifespan via vault token renew)
+✅ Revocable (can be manually revoked)
+✅ Supports Child Tokens (hierarchical token chaining)
+When to Use?
+
+    General authentication (CLI, API, Terraform).
+
+    Long-lived sessions (admin access, CI/CD pipelines).
+
+Example:
+
+vault token create -policy=admin -ttl=24h
+
+2. Batch Tokens (Lightweight Tokens)
+
+Description:
+
+    Designed for high-performance, short-lived operations.
+
+    Not stored in Vault’s backend (ephemeral, memory-only).
+
+    Cannot be renewed or revoked manually.
+
+Key Features:
+
+⚡ Faster (no storage I/O overhead)
+⏳ Short-Lived (auto-expires after TTL)
+❌ No Renewal/Revocation (must wait for expiry)
+❌ No Child Tokens
+When to Use?
+
+    High-frequency operations (auto-scaling, batch jobs).
+
+    Temporary access (short-lived API tokens).
+
+Example:
+
+vault token create -type=batch -policy=read-only -ttl=1h
+
+3. Orphan Tokens (Parentless Tokens)
+
+Description:
+
+    Breaks parent-child hierarchy (not tied to the creating token).
+
+    Persists even if the parent token is revoked.
+
+    Must be manually revoked.
+
+Key Features:
+    
+🔗 No Parent Dependency (survives parent revocation)
+⏳ Long-Lived (if TTL allows)
+🔄 Renewable (unlike batch tokens)
+When to Use?
+
+    Background services (cron jobs, monitoring agents).
+
+    Emergency access (break-glass scenarios).
+
+Example:
+
+vault token create -orphan -policy=backup -ttl=720h
+
+4. Root Tokens (Superuser Tokens)
+
+Description:
+
+    Highest privilege (can do anything in Vault).
+
+    Generated only during initialization.
+
+    Should be revoked immediately after setup.
+
+Key Features:
+
+⚠ Unrestricted Access (bypasses all policies)
+🚨 High Risk (should never be used routinely)
+Best Practices:
+
+    Use only for initial setup.
+
+    Replace with short-lived admin tokens.
+
+Example:
+
+vault operator init
+
+5. Periodic Tokens (Automatically Renewing Tokens)
+
+Description:
+
+    Auto-renewing tokens with a fixed period.
+
+    Must be renewed before each period expires.
+
+Key Features:
+
+🔄 Self-Renewing (if used before TTL)
+⏳ Long-Lived (until explicitly revoked)
+When to Use?
+
+    Long-running services (databases, Kubernetes auth).
+
+Example:
+
+vault token create -policy=db-access -period=24h

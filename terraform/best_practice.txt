@@ -1,0 +1,247 @@
+Resource Structure
+
+    Argument Order:
+    hcl
+
+resource "type" "name" {
+  count = ...  # or for_each
+  
+  # Required arguments
+  arg1 = ...
+  arg2 = ...
+  
+  # Optional arguments
+  arg3 = ...
+  
+  tags = {
+    # tags here
+  }
+  
+  depends_on = [...]
+  
+  lifecycle {
+    # lifecycle rules
+  }
+}
+
+Count/for_each:
+
+    Place at the top of the resource block
+
+    Separate from other arguments with a newline
+
+    Prefer boolean conditions over length checks
+
+    Example:
+    hcl
+
+        count = var.create_resource ? 1 : 0  # Preferred
+        count = length(var.items) > 0 ? 1 : 0  # Acceptable
+
+    Tags:
+
+        Place tags as the last "real" argument before depends_on and lifecycle
+
+        Separate with a blank line from other arguments
+
+Variables
+
+    Structure:
+    hcl
+
+    variable "name" {
+      description = "Clear description of the variable"
+      type        = type_constraint
+      default     = default_value
+      nullable    = false  # when appropriate
+      
+      validation {
+        # validation rules
+      }
+    }
+
+    Best Practices:
+
+        Use plural names for list/map variables
+
+        Always include descriptions
+
+        Prefer simple types unless strict constraints are needed
+
+        Avoid double negatives in variable names
+
+        Set nullable = false for required variables with defaults
+
+        Use upstream documentation wording when applicable
+
+Outputs
+
+    Naming Convention:
+
+        Follow {name}_{type}_{attribute} pattern
+
+        Example: private_subnet_ids for aws_subnet.private IDs
+
+        Omit this prefix for generic outputs
+
+    Structure:
+    hcl
+
+output "name" {
+  description = "Clear description of the output"
+  value       = ...
+  sensitive   = true/false  # use cautiously
+}
+4. Dynamic Blocks & Advanced Features
+Dynamic Security Group Rules:
+hcl
+
+dynamic "ingress" {
+  for_each = var.allowed_ports
+  content {
+    from_port   = ingress.value
+    to_port     = ingress.value
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+Using try() for Safe Lookups:
+hcl
+
+output "instance_ip" {
+  value = try(aws_instance.web[0].private_ip, "")
+}
+
+5. Module Design
+Minimal EC2 Module:
+
+modules/ec2/
+├── main.tf         # Resource definitions
+├── variables.tf    # Inputs
+├── outputs.tf      # Outputs
+└── README.md       # Documentation
+
+variables.tf:
+hcl
+
+variable "instance_type" {
+  description = "EC2 instance type"
+  type        = string
+  default     = "t3.micro"
+}
+
+outputs.tf:
+hcl
+
+output "instance_id" {
+  description = "ID of the EC2 instance"
+  value       = aws_instance.this.id
+}
+
+6. State Management
+Remote State Backend:
+hcl
+
+terraform {
+  backend "s3" {
+    bucket         = "my-terraform-state"
+    key            = "prod/network/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "terraform-locks"
+  }
+}
+
+7. Testing (Terratest Example)
+Go Test File:
+go
+
+package test
+
+import (
+  "testing"
+  "github.com/gruntwork-io/terratest/modules/terraform"
+)
+
+func TestTerraformAwsInstance(t *testing.T) {
+  terraformOptions := &terraform.Options{
+    TerraformDir: "../examples/simple",
+  }
+
+  defer terraform.Destroy(t, terraformOptions)
+  terraform.InitAndApply(t, terraformOptions)
+
+  instanceID := terraform.Output(t, terraformOptions, "instance_id")
+  assert.NotEmpty(t, instanceID)
+}
+
+8. Security Practices
+Secure Variable Handling:
+hcl
+
+# Never do this:
+variable "db_password" {
+  default = "password123"  # Hardcoded secret
+}
+
+# Instead:
+variable "db_password" {
+  type      = string
+  sensitive = true
+  # Get from env var TF_VAR_db_password or secret store
+}
+
+9. CI/CD Integration
+GitLab CI Example:
+yaml
+
+stages:
+  - validate
+  - plan
+  - apply
+
+validate:
+  stage: validate
+  script:
+    - terraform validate
+
+plan:
+  stage: plan
+  script:
+    - terraform plan -out=tfplan
+  artifacts:
+    paths:
+      - tfplan
+
+apply:
+  stage: apply
+  script:
+    - terraform apply tfplan
+  when: manual  # Manual approval for production
+
+10. Documentation
+README.md Example:
+markdown
+
+# AWS VPC Module
+
+Creates a VPC with public and private subnets.
+
+## Usage
+
+```hcl
+module "vpc" {
+  source = "github.com/our-org/terraform-aws-vpc"
+
+  cidr_block = "10.0.0.0/16"
+  azs        = ["us-east-1a", "us-east-1b"]
+}
+```
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| vpc_id | The ID of the VPC |
+| public_subnet_ids | List of public subnet IDs |

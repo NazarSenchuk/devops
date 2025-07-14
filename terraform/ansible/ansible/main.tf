@@ -1,23 +1,23 @@
 
-data "aws_key_pair" "linux"{
+data "aws_key_pair" "linux" {
   key_name = var.key_name
 }
 
 locals {
   ingress_rules = [{
-    port = 22
-    protocol = "TCP"
+    port        = 22
+    protocol    = "TCP"
     description = "Allows ssh trafic"
-  },
-  {
-    port = 80
-    protocol = "TCP"
-    description = "Allows 80 port"
-  }]  
-  
+    },
+    {
+      port        = 80
+      protocol    = "TCP"
+      description = "Allows 80 port"
+  }]
+
   egress_rules = [{
-    port = 0 
-    protocol = "-1"
+    port        = 0
+    protocol    = "-1"
     description = "Allows all outbound trafic"
   }]
 
@@ -25,7 +25,7 @@ locals {
 
 resource "aws_security_group" "allow_all_trafic" {
   name        = "allow_all_trafic"
-  description ="Allows all trafic"
+  description = "Allows all trafic"
   vpc_id      = var.vpc_id
 
 
@@ -39,7 +39,7 @@ resource "aws_security_group" "allow_all_trafic" {
       protocol    = ingress.value.protocol
       cidr_blocks = ["0.0.0.0/0"]
     }
-    }
+  }
 
   dynamic "egress" {
     for_each = local.egress_rules
@@ -50,29 +50,29 @@ resource "aws_security_group" "allow_all_trafic" {
       protocol    = egress.value.protocol
       cidr_blocks = ["0.0.0.0/0"]
     }
-    }
+  }
 
-  
+
   tags = {
     Name = "ansible"
-    }
-  
+  }
+
 }
 
 
 
 resource "aws_instance" "ansible" {
-    count = 1 
+  count = 2
 
-    subnet_id = var.ansible_subnet
-    ami = var.ami_id
-    instance_type = var.instance_type
-    key_name = data.aws_key_pair.linux.key_name	
-    security_groups=[aws_security_group.allow_all_trafic.id]
-    
-    tags = {
-        Name = "ansible"
-    }
+  subnet_id       = var.ansible_subnet
+  ami             = var.ami_id
+  instance_type   = var.instance_type
+  key_name        = data.aws_key_pair.linux.key_name
+  security_groups = [aws_security_group.allow_all_trafic.id]
 
-    user_data = filebase64("${path.module}/ansible.sh")
+  tags = {
+    Name = "ansible-${count.index}"
+  }
+
+  user_data = filebase64("${path.module}/ansible.sh")
 }
