@@ -1,0 +1,58 @@
+name: Sonarqube
+
+on:
+  pull_request:
+    paths:
+      - 'worker/**'
+    branches:
+      - main
+      - dev/*
+    types: [opened, edited, ready_for_review, synchronize]
+jobs:
+  test-and-analyze:
+    name: Test and Analyze
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      - name: Quick PR Title Check
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          if [[ "$TITLE" =~ ^(feat|fix|docs|chore): ]]; then
+            echo "✅ Good enough for deployment"
+          else
+            echo "❌ Use: feat:/fix:/docs:/chore:"
+            exit 1
+          fi
+
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'zulu'
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('worker/**/*.gradle') }}
+          restore-keys: ${{ runner.os }}-gradle
+
+      - name: Run tests
+        run: ./worker/gradlew test --info
+
+      - name: Cache SonarQube packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Build and analyze
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./worker/gradlew build sonar --info
