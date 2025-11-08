@@ -1,0 +1,81 @@
+# /etc/nginx/sites-available/default
+{% for domain_name, domain in domains.items() %}
+# {{ domain_name }}
+server {
+    listen 80;
+    server_name {{ domain_name }};
+    
+    error_page 404 /404.html;
+    location = /404.html {
+        root /etc/nginx/error;
+        internal;
+    }
+
+    error_page 500 502 503 504 /500.html;
+    location = /500.html {
+        root /etc/nginx/error;
+        internal;
+    }
+    
+
+
+
+    {% if domain.ssl_enabled | default(false) %}
+    # Redirect to HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    
+    
+
+    listen 443 ssl;
+    server_name {{ domain_name }};
+    ssl_certificate /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ domain_name }}/privkey.pem;
+    {% endif %}
+    
+    {% for location in domain.locations %}
+    location {{ location.path }} {
+        {% if location.hosts | default([]) %}
+        # Load balancing
+        proxy_pass http://{{ location.name }}_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        
+        {% if location.cache | default(false) %}
+        # Cache settings
+        proxy_cache cache;
+        proxy_cache_valid 200 302 {{ location.cache_duration | default('10m') }};
+        add_header X-Cache-Status $upstream_cache_status;
+        {% endif %}
+        
+        {% else %}
+        # Static files
+        root {{ location.root }};
+        {% if location.index | default(false) %}index {{ location.index }};{% endif %}
+        {% endif %}
+    }
+    {% endfor %}
+}
+{% if domain.ssl_enabled | default(false) %}
+{% endif %}
+
+{% if domain.locations and (domain.locations[0].hosts | default([])) %}
+# Upstream for {{ domain_name }}
+{% for location in domain.locations %}
+{% if location.hosts | default([]) %}
+upstream {{ location.name }}_upstream {
+    {% if location.lb_type | default('round-robin') == "least_conn" %}least_conn;{% endif %}
+    {% if location.lb_type | default('round-robin') == "ip_hash" %}ip_hash;{% endif %}
+    {% if location.lb_type | default('round-robin') == "hash" %}hash $remote_addr;{% endif %}
+    
+    {% for host in location.hosts %}
+    server {{ host }};
+    {% endfor %}
+}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endfor %}

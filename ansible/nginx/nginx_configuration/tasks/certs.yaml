@@ -1,0 +1,32 @@
+- name: Check if any domain has SSL enabled
+  set_fact:
+    ssl_required: "{{ domains | selectattr('ssl_enabled', 'defined') | selectattr('ssl_enabled') | list | length > 0 }}"
+  when: domains is defined
+
+- name: Debug SSL requirement
+  debug:
+    msg: "SSL required: {{ ssl_required | default(false) }}"
+    
+- name: Install Certbot if SSL required
+  apt:
+    name: 
+      - certbot
+      - python3-certbot-nginx
+    state: present
+    update_cache: yes
+  when: ssl_required | default(false)
+
+- name: Ensure Nginx is running (required for Certbot)
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+  when: ssl_required | default(false)
+
+- name: Request SSL certificates for domains
+  command: >
+    certbot certonly --nginx --non-interactive --agree-tos --email {{ certbot_email }}
+    {% for domain in ssl_domains %} -d {{ domain }}{% endfor %}
+  when: ssl_required | default(false)
+  register: certbot_result
+  changed_when: "'Congratulations' in certbot_result.stdout or 'Success' in certbot_result.stdout"

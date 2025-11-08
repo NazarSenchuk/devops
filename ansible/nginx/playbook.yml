@@ -1,0 +1,5 @@
+# playbook.yml
+- name: Configure Nginx
+  hosts: nginx_servers  # This should match your inventory grou
+  roles:
+    - nginx_configuration

@@ -1,0 +1,13 @@
+{
+    "name": "Alpine with Ansible",
+    "workspaceFolder": "/workspaces",
+    "dockerFile": "Dockerfile",
+    "settings": { 
+        "terminal.integrated.shell.linux": "/bin/ash"
+    },
+    "extensions": [
+        "redhat.ansible"
+    ],
+    "postCreateCommand": "ansible --version",
+    "remoteUser": "root"
+}

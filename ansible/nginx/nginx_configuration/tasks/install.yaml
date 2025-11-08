@@ -1,0 +1,28 @@
+---
+
+
+- name: Update and upgrade apt
+  ansible.builtin.apt:
+    update_cache: yes
+    upgrade: yes
+
+ 
+
+- name: "Install Nginx to version"
+  ansible.builtin.apt:
+    name: "nginx"
+    state: present
+  notify: Restart nginx service
+
+
+- name: Creates directory
+  ansible.builtin.file:
+    path: /etc/nginx/error/
+    state: directory
+
+
+- name: Create link to the new config to enable it
+  ansible.builtin.copy:
+    src: files/
+    dest: /etc/nginx/error/
+

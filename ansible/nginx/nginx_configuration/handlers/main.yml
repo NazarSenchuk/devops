@@ -1,0 +1,9 @@
+#SPDX-License-Identifier: MIT-0
+---
+# handlers file for nginx_configuration
+- name: Restart nginx service
+  systemd_service:
+    name: nginx
+    daemon_reload: yes
+    state: restarted
+  become: yes
