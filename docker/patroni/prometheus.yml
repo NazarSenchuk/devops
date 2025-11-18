@@ -1,0 +1,20 @@
+global:
+  scrape_interval: 20s
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+    - targets: ['prometheus:9090']
+
+  - job_name: 'patroni_cluster'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets:
+        - 'patroni0:8008'
+        - 'patroni1:8008'
+        - 'patroni2:8008'
+    relabel_configs:
+    - source_labels: [__address__]
+      regex: '(.*):8008'
+      target_label: service_name
+      replacement: '${1}'
+   

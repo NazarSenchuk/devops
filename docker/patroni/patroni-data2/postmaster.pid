@@ -1,0 +1,8 @@
+25
+/var/lib/postgresql/patroni/main
+1763039558
+5432
+/var/run/postgresql
+172.18.0.10
+    93637         0
+ready   

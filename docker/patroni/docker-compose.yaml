@@ -1,0 +1,142 @@
+services:
+  etcd0: &etcd-base
+    image: quay.io/coreos/etcd:v3.5.18
+    entrypoint: /usr/local/bin/etcd
+    networks:
+      - patroni
+    restart: unless-stopped
+    command:
+      - --name=etcd0
+      - --data-dir=/etcd-data  
+      - --initial-advertise-peer-urls=http://etcd0:2380 #peer - node to node comunication , how nodes must to connect to etcd
+      - --listen-peer-urls=http://0.0.0.0:2380 # from where  node can reach  your etcd
+      - --advertise-client-urls=http://etcd0:2379 # how clients must  connect to etcd
+      - --listen-client-urls=http://0.0.0.0:2379 # from where clients can connect
+      - --initial-cluster=etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380 # initial cluster members
+      - --initial-cluster-state=new 
+      - --initial-cluster-token=my_secret_token
+      - --enable-v2=true
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512m
+
+  etcd1:
+    <<: *etcd-base
+    command:
+      - --name=etcd1
+      - --data-dir=/etcd-data
+      - --initial-advertise-peer-urls=http://etcd1:2380
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --advertise-client-urls=http://etcd1:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --initial-cluster=etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380
+      - --initial-cluster-state=new
+      - --initial-cluster-token=my_secret_token
+      - --enable-v2=true
+
+  etcd2:
+    <<: *etcd-base
+    command:
+      - --name=etcd2
+      - --data-dir=/etcd-data
+      - --initial-advertise-peer-urls=http://etcd2:2380
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --advertise-client-urls=http://etcd2:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --initial-cluster=etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380
+      - --initial-cluster-state=new
+      - --initial-cluster-token=my_secret_token
+      - --enable-v2=true
+
+  patroni0: &patroni-base
+    image: ghcr.io/batonogov/patroni-docker:v4.0.4-pg17.3
+    entrypoint: [/bin/sh, /entrypoint.sh]
+    restart: unless-stopped
+    volumes:
+      - ./patroni.yml:/patroni.yml:ro #<------ basic configuration
+      - ./entrypoint.sh:/entrypoint.sh:ro  #<---- main configurations for every node
+      - ./patroni-data0:/var/lib/postgresql/patroni/main
+    environment:
+      PATRONI_API_CONNECT_PORT: 8008
+      REPLICATION_NAME: replicator # name for replication user 
+      REPLICATION_PASS: replpass  # password for replication password
+      SU_NAME: postgres # name for super user 
+      SU_PASS: supass  # password for super user 
+      POSTGRES_APP_ROLE_PASS: appass # wil create role especcialy for app with appass name
+    networks:
+      - patroni
+    depends_on:
+      - etcd0
+      - etcd1
+      - etcd2
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512m
+
+  patroni1:
+    <<: *patroni-base
+    volumes:
+      - ./patroni.yml:/patroni.yml:ro
+      - ./entrypoint.sh:/entrypoint.sh:ro
+      - ./patroni-data1:/var/lib/postgresql/patroni/main
+
+  patroni2:
+    <<: *patroni-base
+    volumes:
+      - ./patroni.yml:/patroni.yml:ro
+      - ./entrypoint.sh:/entrypoint.sh:ro
+      - ./patroni-data2:/var/lib/postgresql/patroni/main
+
+  haproxy:
+    image: haproxy:3.1.3-alpine
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - 5432:5432
+      - 5433:5433
+      - 8080:8080
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: 0
+    restart: unless-stopped
+    networks:
+      - patroni
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64m
+  
+  
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    networks:
+      - patroni
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro  
+      - ./prom_data:/prometheus
+    restart: unless-stopped
+    ports:
+      - 9090:9090
+  
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=grafana
+    volumes:
+      - ./datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+
+    networks:
+      - patroni
+networks:
+  patroni:
+    driver: bridge
